@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadData();
   checkUserRegistration();
   setupEventListeners();
+  setupAdminListeners(); // AJOUT CRITIQUE
   renderProducts();
   updateCartUI();
   setupLightbox();
@@ -84,6 +85,18 @@ function setupLightbox() {
   });
 }
 
+// Configuration des écouteurs admin (AJOUT)
+function setupAdminListeners() {
+  // Formulaire d'ajout de produit
+  const productForm = document.getElementById("productForm");
+  if (productForm) {
+    productForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+      addProduct();
+    });
+  }
+}
+
 // Fonctions pour la lightbox
 function openLightbox(productId, imgIndex = 0) {
   const product = products.find(p => p.id === productId);
@@ -134,7 +147,7 @@ function registerUser(name, email) {
   document.getElementById("registrationModal").classList.remove("active");
 }
 
-// Gestion des produits
+// Gestion des produits (CORRIGÉE)
 function addProduct() {
   const name = document.getElementById("productName").value;
   const price = Number.parseFloat(document.getElementById("productPrice").value);
@@ -146,7 +159,13 @@ function addProduct() {
   const category = document.getElementById("productCategory").value;
   const description = document.getElementById("productDescription").value;
 
-  const images = [image1, image2, image3, image4].filter((img) => img.trim() !== "");
+  // Validation des champs obligatoires
+  if (!name || isNaN(price) || isNaN(originalPrice) || !image1 || !category) {
+    alert("Veuillez remplir tous les champs obligatoires (*)");
+    return;
+  }
+
+  const images = [image1, image2, image3, image4].filter(img => img.trim() !== "");
 
   const newProduct = {
     id: Date.now(),
