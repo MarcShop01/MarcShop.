@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarcShop - Votre Boutique en Ligne</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Modal d'inscription -->
+    <div id="registrationModal" class="modal">
+        <div class="modal-content">
+            <h2>Bienvenue sur MarcShop! 🛍️</h2>
+            <p>Pour accéder à notre boutique, veuillez entrer vos informations</p>
+            <form id="registrationForm">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="userName" placeholder="Votre nom complet" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="userEmail" placeholder="votre@email.com" required>
+                </div>
+                <button type="submit">Accéder à MarcShop</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>MarcShop</h1>
+                </div>
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Rechercher des produits...">
+                </div>
+                <div class="header-actions">
+                    <button class="share-btn" onclick="shareWebsite()">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="user-btn">
+                        <i class="fas fa-user"></i>
+                    </button>
+                    <button class="cart-btn" onclick="toggleCart()">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span id="cartCount" class="cart-count">0</span>
+                    </button>
+                    <button class="admin-btn" onclick="toggleAdmin()">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Section Promo -->
+    <section class="promo-section">
+        <div class="container">
+            <div class="promo-banner">
+                <h2>🔥 Offres Spéciales MarcShop</h2>
+                <p>Jusqu'à 70% de réduction sur une sélection de produits</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Navigation Catégories -->
+    <nav class="category-nav">
+        <div class="container">
+            <div class="categories">
+                <button class="category-btn active" data-category="all">Tous</button>
+                <button class="category-btn" data-category="electronics">Électronique</button>
+                <button class="category-btn" data-category="clothing">Vêtements</button>
+                <button class="category-btn" data-category="home">Maison</button>
+                <button class="category-btn" data-category="sports">Sports</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Grille de Produits -->
+    <main class="main-content">
+        <div class="container">
+            <div id="productsGrid" class="products-grid">
+                <div class="no-products">
+                    <h3>Aucun produit disponible</h3>
+                    <p>Les produits seront affichés ici une fois ajoutés par l'administrateur.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Panier Sidebar -->
+    <div id="cartSidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Mon Panier</h3>
+            <button onclick="toggleCart()" class="close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="cartItems" class="cart-items">
+            <div class="empty-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <p>Votre panier est vide</p>
+            </div>
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <strong>Total: $<span id="cartTotal">0.00</span></strong>
+            </div>
+            <button class="checkout-btn" onclick="checkout()">Commander</button>
+        </div>
+    </div>
+
+    <!-- Interface Admin -->
+    <div id="adminPanel" class="admin-panel">
+        <div class="admin-header">
+            <h3>Administration MarcShop</h3>
+            <button onclick="toggleAdmin()" class="close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="admin-tabs">
+            <button class="tab-btn active" data-tab="products">Produits</button>
+            <button class="tab-btn" data-tab="users">Utilisateurs</button>
+        </div>
+        
+        <!-- Gestion Produits -->
+        <div id="productsTab" class="tab-content active">
+            <div class="add-product-form">
+                <h4>Ajouter un Produit</h4>
+                <form id="productForm">
+                    <input type="text" id="productName" placeholder="Nom du produit" required>
+                    <input type="number" id="productPrice" placeholder="Prix ($)" step="0.01" required>
+                    <input type="number" id="productOriginalPrice" placeholder="Prix original ($)" step="0.01" required>
+                    <input type="url" id="productImage1" placeholder="URL Image 1" required>
+                    <input type="url" id="productImage2" placeholder="URL Image 2">
+                    <input type="url" id="productImage3" placeholder="URL Image 3">
+                    <input type="url" id="productImage4" placeholder="URL Image 4">
+                    <select id="productCategory" required>
+                        <option value="">Sélectionner une catégorie</option>
+                        <option value="electronics">Électronique</option>
+                        <option value="clothing">Vêtements</option>
+                        <option value="home">Maison</option>
+                        <option value="sports">Sports</option>
+                    </select>
+                    <textarea id="productDescription" placeholder="Description du produit"></textarea>
+                    <button type="submit">Ajouter le Produit</button>
+                </form>
+            </div>
+            <div id="productsList" class="products-list"></div>
+        </div>
+
+        <!-- Gestion Utilisateurs -->
+        <div id="usersTab" class="tab-content">
+            <div class="users-stats">
+                <div class="stat-card">
+                    <h4>Utilisateurs Totaux</h4>
+                    <span id="totalUsers">0</span>
+                </div>
+                <div class="stat-card">
+                    <h4>Utilisateurs Actifs</h4>
+                    <span id="activeUsers">0</span>
+                </div>
+            </div>
+            <div id="usersList" class="users-list"></div>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="overlay" class="overlay"></div>
+    
+    <!-- Lightbox pour les images de produits -->
+    <div id="productLightbox" class="lightbox">
+        <span class="close">&times;</span>
+        <span class="arrow prev">&#10094;</span>
+        <span class="arrow next">&#10095;</span>
+        <img class="lightbox-content" id="lightboxImage">
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
