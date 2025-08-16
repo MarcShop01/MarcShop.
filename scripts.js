@@ -95,16 +95,6 @@ function setupAdminListeners() {
       addProduct();
     });
   }
-  
-  // Bouton d'administration
-  document.querySelector(".admin-btn").addEventListener("click", toggleAdmin);
-  
-  // Tabs admin
-  document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", function() {
-      switchTab(this.dataset.tab);
-    });
-  });
 }
 
 // Fonctions pour la lightbox
@@ -254,4 +244,185 @@ function renderProducts() {
     .join("");
 }
 
-// ... (le reste du code reste inchangé)
+// Filtrage par catégorie
+function filterByCategory(category) {
+  document.querySelectorAll(".category-btn").forEach((btn) => {
+    btn.classList.remove("active");
+  });
+  document.querySelector(`[data-category="${category}"]`).classList.add("active");
+
+  const productCards = document.querySelectorAll(".product-card");
+  productCards.forEach((card) => {
+    if (category === "all" || card.dataset.category === category) {
+      card.style.display = "block";
+    } else {
+      card.style.display = "none";
+    }
+  });
+}
+
+// Gestion du panier
+function addToCart(productId) {
+  const product = products.find((p) => p.id === productId);
+  if (!product) return;
+
+  const existingItem = cart.find((item) => item.id === productId);
+
+  if (existingItem) {
+    existingItem.quantity += 1;
+  } else {
+    cart.push({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.images[0],
+      quantity: 1,
+    });
+  }
+
+  saveData();
+  updateCartUI();
+
+  // Animation d'ajout
+  const btn = event.target;
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-check"></i> Ajouté!';
+  btn.style.background = "#059669";
+  setTimeout(() => {
+    btn.innerHTML = originalText;
+    btn.style.background = "#10b981";
+  }, 1000);
+}
+
+function removeFromCart(productId) {
+  cart = cart.filter((item) => item.id !== productId);
+  saveData();
+  updateCartUI();
+}
+
+function updateQuantity(productId, newQuantity) {
+  if (newQuantity <= 0) {
+    removeFromCart(productId);
+    return;
+  }
+
+  const item = cart.find((item) => item.id === productId);
+  if (item) {
+    item.quantity = newQuantity;
+    saveData();
+    updateCartUI();
+  }
+}
+
+function updateCartUI() {
+  const cartCount = document.getElementById("cartCount");
+  const cartItems = document.getElementById("cartItems");
+  const cartTotal = document.getElementById("cartTotal");
+
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  cartCount.textContent = totalItems;
+  cartTotal.textContent = totalPrice.toFixed(2);
+
+  if (cart.length === 0) {
+    cartItems.innerHTML = `
+            <div class="empty-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <p>Votre panier est vide</p>
+            </div>
+        `;
+  } else {
+    cartItems.innerHTML = cart
+      .map(
+        (item) => `
+            <div class="cart-item">
+                <img src="${item.image}" alt="${item.name}">
+                <div class="cart-item-info">
+                    <div class="cart-item-name">${item.name}</div>
+                    <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                        <span>${item.quantity}</span>
+                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
+                        <button class="quantity-btn" onclick="removeFromCart(${item.id})" style="margin-left: 1rem; color: #ef4444;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `
+      )
+      .join("");
+  }
+}
+
+// Interface utilisateur
+function toggleCart() {
+  const sidebar = document.getElementById("cartSidebar");
+  const overlay = document.getElementById("overlay");
+
+  sidebar.classList.toggle("active");
+  overlay.classList.toggle("active");
+}
+
+function toggleAdmin() {
+  const panel = document.getElementById("adminPanel");
+  const overlay = document.getElementById("overlay");
+
+  panel.classList.toggle("active");
+  overlay.classList.toggle("active");
+}
+
+function closeAllPanels() {
+  document.getElementById("cartSidebar").classList.remove("active");
+  document.getElementById("adminPanel").classList.remove("active");
+  document.getElementById("overlay").classList.remove("active");
+  closeLightbox();
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"));
+
+  document.querySelector(`[data-tab="${tabName}"]`).classList.add("active");
+  document.getElementById(`${tabName}Tab`).classList.add("active");
+}
+
+// Fonctionnalités supplémentaires
+function shareWebsite() {
+  const url = window.location.href;
+  const text = "Découvrez MarcShop - La meilleure boutique en ligne pour tous vos besoins!";
+
+  if (navigator.share) {
+    navigator.share({
+      title: "MarcShop",
+      text: text,
+      url: url,
+    });
+  } else {
+    navigator.clipboard.writeText(url).then(() => {
+      alert("Lien copié dans le presse-papiers!");
+    });
+  }
+}
+
+function checkout() {
+  if (cart.length === 0) {
+    alert("Votre panier est vide!");
+    return;
+  }
+
+  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  alert(
+    `Commande confirmée!\n${itemCount} article(s) pour un total de $${total.toFixed(2)}\n\nMerci pour votre achat sur MarcShop!`
+  );
+
+  // Vider le panier
+  cart = [];
+  saveData();
+  updateCartUI();
+  closeAllPanels();
+}
