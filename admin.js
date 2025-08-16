@@ -150,6 +150,7 @@ function deleteProduct(id) {
   }
 }
 
+// Affichage des produits (CORRIGÉ)
 function renderProductsList() {
   const productsList = document.getElementById("productsList")
 
@@ -166,7 +167,7 @@ function renderProductsList() {
                 (product) => `
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
                     <div style="display: flex; align-items: center; gap: 1rem;">
-                        <img src="${product.images[0] || "/placeholder.svg"}" alt="${product.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 0.375rem;">
+                        <img src="${product.images[0] || 'https://via.placeholder.com/60x60?text=Image+Manquante'}" alt="${product.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 0.375rem;">
                         <div>
                             <strong>${product.name}</strong><br>
                             <span style="color: #10b981; font-weight: bold;">$${product.price.toFixed(2)}</span>
