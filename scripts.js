@@ -11,10 +11,10 @@ document.addEventListener("DOMContentLoaded", () => {
   loadData();
   checkUserRegistration();
   setupEventListeners();
-  setupAdminListeners(); // AJOUT CRITIQUE
   renderProducts();
   updateCartUI();
   setupLightbox();
+  setupAdminListeners(); // Ajout crucial
 });
 
 // Gestion des données localStorage
@@ -85,7 +85,7 @@ function setupLightbox() {
   });
 }
 
-// Configuration des écouteurs admin (AJOUT)
+// Configuration des écouteurs admin (AJOUT CRITIQUE)
 function setupAdminListeners() {
   // Formulaire d'ajout de produit
   const productForm = document.getElementById("productForm");
@@ -95,6 +95,16 @@ function setupAdminListeners() {
       addProduct();
     });
   }
+  
+  // Bouton d'administration
+  document.querySelector(".admin-btn").addEventListener("click", toggleAdmin);
+  
+  // Tabs admin
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
+      switchTab(this.dataset.tab);
+    });
+  });
 }
 
 // Fonctions pour la lightbox
@@ -147,7 +157,7 @@ function registerUser(name, email) {
   document.getElementById("registrationModal").classList.remove("active");
 }
 
-// Gestion des produits (CORRIGÉE)
+// Gestion des produits
 function addProduct() {
   const name = document.getElementById("productName").value;
   const price = Number.parseFloat(document.getElementById("productPrice").value);
@@ -213,11 +223,12 @@ function renderProducts() {
       const discount = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
       const rating = 4.0 + Math.random() * 1.0;
       const reviews = Math.floor(Math.random() * 1000) + 100;
+      const firstImage = product.images[0] || "https://via.placeholder.com/200";
 
       return `
             <div class="product-card" data-category="${product.category}">
                 <div class="product-image" onclick="openLightbox(${product.id})">
-                    <img src="${product.images[0] || "/placeholder.svg"}" alt="${product.name}" class="product-img">
+                    <img src="${firstImage}" alt="${product.name}" class="product-img">
                     <div class="product-badge">NOUVEAU</div>
                     <div class="discount-badge">-${discount}%</div>
                 </div>
@@ -360,6 +371,14 @@ function toggleCart() {
   const overlay = document.getElementById("overlay");
 
   sidebar.classList.toggle("active");
+  overlay.classList.toggle("active");
+}
+
+function toggleAdmin() {
+  const panel = document.getElementById("adminPanel");
+  const overlay = document.getElementById("overlay");
+
+  panel.classList.toggle("active");
   overlay.classList.toggle("active");
 }
 
