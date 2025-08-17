@@ -7,6 +7,22 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+      window.firebaseConfig = {
+        apiKey: "AIzaSyC_krW6QcyTS6JZNJf-_7YAc_491mCWYaQ",
+        authDomain: "marchat-e4d21.firebaseapp.com",
+        projectId: "marchat-e4d21",
+        storageBucket: "marchat-e4d21.appspot.com",
+        messagingSenderId: "211043298263",
+        appId: "1:211043298263:web:dcf751d299aa4360d83992",
+        measurementId: "G-CZHXLDZTBW"
+      };
+      window.firebaseApp = initializeApp(window.firebaseConfig);
+      window.firebaseDB = getFirestore(window.firebaseApp);
+    </script>
 </head>
 <body>
     <!-- Modal d'inscription -->
@@ -22,6 +38,10 @@
                 <div class="input-group">
                     <i class="fas fa-envelope"></i>
                     <input type="email" id="userEmail" placeholder="votre@email.com" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-phone"></i>
+                    <input type="tel" id="userPhone" placeholder="Numéro de téléphone" pattern="[0-9 +]+" required>
                 </div>
                 <button type="submit">Accéder à MarcShop</button>
             </form>
@@ -101,17 +121,15 @@
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div id="cartItems" class="cart-items">
-            <div class="empty-cart">
-                <i class="fas fa-shopping-cart"></i>
-                <p>Votre panier est vide</p>
-            </div>
+        <div id="cartItems" class="cart-items"></div>
+        <div style="margin:1.5rem 0;">
+            <div id="paypal-button-container"></div>
         </div>
         <div class="cart-footer">
             <div class="cart-total">
                 <strong>Total: $<span id="cartTotal">0.00</span></strong>
             </div>
-            <button class="checkout-btn" onclick="checkout()">Commander</button>
+            <!-- Le bouton PayPal remplace le bouton Commander -->
         </div>
     </div>
 
@@ -127,34 +145,9 @@
             <button class="tab-btn active" data-tab="products">Produits</button>
             <button class="tab-btn" data-tab="users">Utilisateurs</button>
         </div>
-        
-        <!-- Gestion Produits -->
         <div id="productsTab" class="tab-content active">
-            <div class="add-product-form">
-                <h4>Ajouter un Produit</h4>
-                <form id="productForm">
-                    <input type="text" id="productName" placeholder="Nom du produit" required>
-                    <input type="number" id="productPrice" placeholder="Prix ($)" step="0.01" required>
-                    <input type="number" id="productOriginalPrice" placeholder="Prix original ($)" step="0.01" required>
-                    <input type="url" id="productImage1" placeholder="URL Image 1" required>
-                    <input type="url" id="productImage2" placeholder="URL Image 2">
-                    <input type="url" id="productImage3" placeholder="URL Image 3">
-                    <input type="url" id="productImage4" placeholder="URL Image 4">
-                    <select id="productCategory" required>
-                        <option value="">Sélectionner une catégorie</option>
-                        <option value="electronics">Électronique</option>
-                        <option value="clothing">Vêtements</option>
-                        <option value="home">Maison</option>
-                        <option value="sports">Sports</option>
-                    </select>
-                    <textarea id="productDescription" placeholder="Description du produit"></textarea>
-                    <button type="submit">Ajouter le Produit</button>
-                </form>
-            </div>
             <div id="productsList" class="products-list"></div>
         </div>
-
-        <!-- Gestion Utilisateurs -->
         <div id="usersTab" class="tab-content">
             <div class="users-stats">
                 <div class="stat-card">
@@ -181,6 +174,8 @@
         <img class="lightbox-content" id="lightboxImage">
     </div>
 
-    <script src="script.js"></script>
+    <!-- PayPal SDK -->
+    <script src="https://www.paypal.com/sdk/js?client-id=AX4iV51P3BZMi2XMsaCvCWpHRKzVLsXSBTpCiJg16aZ62_ToUcO3Y-KLtA3v_0rM_LHfM2W7dmGbsOZF&currency=USD"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
