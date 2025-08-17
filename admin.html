@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        /* ... ton style inline original ... */
         .admin-login {
             display: flex;
             justify-content: center;
@@ -87,6 +88,22 @@
             border-left: 4px solid #10b981;
         }
     </style>
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+      window.firebaseConfig = {
+        apiKey: "AIzaSyC_krW6QcyTS6JZNJf-_7YAc_491mCWYaQ",
+        authDomain: "marchat-e4d21.firebaseapp.com",
+        projectId: "marchat-e4d21",
+        storageBucket: "marchat-e4d21.appspot.com",
+        messagingSenderId: "211043298263",
+        appId: "1:211043298263:web:dcf751d299aa4360d83992",
+        measurementId: "G-CZHXLDZTBW"
+      };
+      window.firebaseApp = initializeApp(window.firebaseConfig);
+      window.firebaseDB = getFirestore(window.firebaseApp);
+    </script>
 </head>
 <body>
     <!-- Formulaire de connexion admin -->
@@ -109,7 +126,6 @@
             </p>
         </div>
     </div>
-
     <!-- Dashboard admin -->
     <div id="adminDashboard" class="admin-dashboard">
         <div class="admin-header">
@@ -118,7 +134,6 @@
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </button>
         </div>
-
         <div class="admin-content">
             <div class="admin-sidebar">
                 <button class="sidebar-btn active" onclick="showSection('dashboard')">
@@ -134,9 +149,7 @@
                     <i class="fas fa-shopping-cart"></i> Commandes
                 </button>
             </div>
-
             <div class="admin-main">
-                <!-- Tableau de bord -->
                 <div id="dashboardSection" class="admin-section active">
                     <h2>Tableau de bord</h2>
                     <div class="stats-grid">
@@ -154,11 +167,8 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Gestion des produits -->
                 <div id="productsSection" class="admin-section">
                     <h2>Gestion des produits</h2>
-                    
                     <div style="background: #f9fafb; padding: 2rem; border-radius: 0.5rem; margin-bottom: 2rem;">
                         <h3>Ajouter un nouveau produit</h3>
                         <form id="productForm">
@@ -178,7 +188,6 @@
                                     </select>
                                 </div>
                             </div>
-                            
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                                 <div class="form-group">
                                     <label for="productPrice">Prix ($)</label>
@@ -189,12 +198,10 @@
                                     <input type="number" id="productOriginalPrice" step="0.01" required>
                                 </div>
                             </div>
-
                             <div class="form-group">
                                 <label for="productDescription">Description</label>
                                 <textarea id="productDescription" rows="3"></textarea>
                             </div>
-
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                                 <div class="form-group">
                                     <label for="productImage1">Image 1 (URL)</label>
@@ -205,7 +212,6 @@
                                     <input type="url" id="productImage2" placeholder="https://marcshop.com/image2.jpg">
                                 </div>
                             </div>
-
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                                 <div class="form-group">
                                     <label for="productImage3">Image 3 (URL)</label>
@@ -216,23 +222,17 @@
                                     <input type="url" id="productImage4" placeholder="https://marcshop.com/image4.jpg">
                                 </div>
                             </div>
-
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-plus"></i> Ajouter le produit
                             </button>
                         </form>
                     </div>
-
                     <div id="productsList"></div>
                 </div>
-
-                <!-- Gestion des utilisateurs -->
                 <div id="usersSection" class="admin-section">
                     <h2>Gestion des utilisateurs</h2>
                     <div id="usersList"></div>
                 </div>
-
-                <!-- Gestion des commandes -->
                 <div id="ordersSection" class="admin-section">
                     <h2>Gestion des commandes</h2>
                     <p>Fonctionnalité en développement...</p>
@@ -240,7 +240,6 @@
             </div>
         </div>
     </div>
-
-    <script src="admin.js"></script>
+    <script type="module" src="admin.js"></script>
 </body>
 </html>
