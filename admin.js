@@ -1,65 +1,50 @@
-// Configuration admin
-const ADMIN_PASSWORD = "marcshop2024"; // Mot de passe admin par défaut
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-// État global
+const db = window.firebaseDB; // défini dans admin.html
+
+const ADMIN_PASSWORD = "marcshop2024";
 let products = [];
 let users = [];
 let isLoggedIn = false;
 
-// Initialisation
 document.addEventListener("DOMContentLoaded", () => {
-  loadData();
   setupEventListeners();
   checkAdminSession();
+  listenProducts();
+  listenUsers();
 });
 
-// Gestion des données
-function loadData() {
-  try {
-    products = JSON.parse(localStorage.getItem("marcshop-products")) || [];
-    users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
-    
-    // Correction pour les anciens produits sans createdAt
-    products = products.map(p => {
-      if (!p.createdAt) {
-        p.createdAt = new Date().toISOString();
-      }
-      return p;
-    });
-    
-  } catch (e) {
-    console.error("Erreur de chargement des données:", e);
-    products = [];
-    users = [];
-  }
+function listenProducts() {
+  onSnapshot(collection(db, "products"), (snapshot) => {
+    products = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    renderProductsList();
+    updateStats();
+  });
+}
+function listenUsers() {
+  onSnapshot(collection(db, "users"), (snapshot) => {
+    users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    renderUsersList();
+    updateStats();
+  });
 }
 
-function saveData() {
-  localStorage.setItem("marcshop-products", JSON.stringify(products));
-  localStorage.setItem("marcshop-users", JSON.stringify(users));
-}
-
-// Configuration des événements
 function setupEventListeners() {
   document.getElementById("loginForm").addEventListener("submit", (e) => {
     e.preventDefault();
     login();
   });
-
   document.getElementById("productForm").addEventListener("submit", (e) => {
     e.preventDefault();
     addProduct();
   });
 }
 
-// Authentification admin
 function checkAdminSession() {
   const adminSession = localStorage.getItem("marcshop-admin-session");
   if (adminSession) {
     const sessionData = JSON.parse(adminSession);
     const now = new Date().getTime();
-
-    // Session valide pendant 24h
     if (now - sessionData.timestamp < 24 * 60 * 60 * 1000) {
       showDashboard();
       return;
@@ -70,116 +55,90 @@ function checkAdminSession() {
 
 function login() {
   const password = document.getElementById("adminPassword").value;
-
   if (password === ADMIN_PASSWORD) {
-    // Créer une session admin
-    const sessionData = {
+    localStorage.setItem("marcshop-admin-session", JSON.stringify({
       timestamp: new Date().getTime(),
       isAdmin: true,
-    };
-    localStorage.setItem("marcshop-admin-session", JSON.stringify(sessionData));
-
+    }));
     showDashboard();
   } else {
     alert("Mot de passe incorrect!");
     document.getElementById("adminPassword").value = "";
   }
 }
-
 function logout() {
   localStorage.removeItem("marcshop-admin-session");
   showLogin();
 }
-
 function showLogin() {
   document.getElementById("adminLogin").style.display = "flex";
   document.getElementById("adminDashboard").style.display = "none";
   isLoggedIn = false;
 }
-
 function showDashboard() {
   document.getElementById("adminLogin").style.display = "none";
   document.getElementById("adminDashboard").style.display = "block";
   isLoggedIn = true;
-
   updateStats();
   renderProductsList();
   renderUsersList();
 }
-
-// Navigation admin
-function showSection(sectionName) {
+window.showSection = function(sectionName) {
   document.querySelectorAll(".sidebar-btn").forEach((btn) => btn.classList.remove("active"));
   document.querySelectorAll(".admin-section").forEach((section) => section.classList.remove("active"));
-
   event.target.classList.add("active");
   document.getElementById(sectionName + "Section").classList.add("active");
-
-  // Actualiser les données selon la section
   if (sectionName === "dashboard") updateStats();
   if (sectionName === "products") renderProductsList();
   if (sectionName === "users") renderUsersList();
 }
 
-// Gestion des produits
-function addProduct() {
+async function addProduct() {
   const name = document.getElementById("productName").value;
   const price = Number.parseFloat(document.getElementById("productPrice").value);
   const originalPrice = Number.parseFloat(document.getElementById("productOriginalPrice").value);
   const category = document.getElementById("productCategory").value;
   const description = document.getElementById("productDescription").value;
-
   const images = [
     document.getElementById("productImage1").value,
     document.getElementById("productImage2").value,
     document.getElementById("productImage3").value,
     document.getElementById("productImage4").value,
   ].filter((img) => img.trim() !== "");
-
   const newProduct = {
-    id: Date.now(),
-    name: name,
-    price: price,
-    originalPrice: originalPrice,
-    images: images,
-    category: category,
-    description: description,
+    name, price, originalPrice, images, category, description,
     stock: 100,
     status: "active",
-    createdAt: new Date().toISOString() // Ajout de la date de création
+    createdAt: new Date().toISOString()
   };
-
-  products.push(newProduct);
-  saveData();
-  renderProductsList();
-  updateStats();
-  document.getElementById("productForm").reset();
-  alert("Produit ajouté avec succès!");
-}
-
-function deleteProduct(id) {
-  if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
-    products = products.filter((p) => p.id !== id);
-    saveData();
-    renderProductsList();
-    updateStats();
+  try {
+    await addDoc(collection(db, "products"), newProduct);
+    document.getElementById("productForm").reset();
+    alert("Produit ajouté avec succès!");
+  } catch (e) {
+    alert("Erreur lors de l'ajout: " + e.message);
   }
 }
 
-// Affichage des produits (CORRIGÉ)
+window.deleteProduct = async function(id) {
+  if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
+    try {
+      await deleteDoc(doc(db, "products", id));
+    } catch (e) {
+      alert("Erreur suppression: " + e.message);
+    }
+  }
+};
+
 function renderProductsList() {
   const productsList = document.getElementById("productsList");
-
-  if (products.length === 0) {
+  if (!products || products.length === 0) {
     productsList.innerHTML = "<p>Aucun produit ajouté.</p>";
     return;
   }
-
-  // Trier les produits par date de création (récent en premier)
   const sortedProducts = [...products].sort((a, b) => 
     new Date(b.createdAt) - new Date(a.createdAt)
   );
-
   productsList.innerHTML = `
         <h3>Produits existants (${sortedProducts.length})</h3>
         <div style="display: grid; gap: 1rem;">
@@ -196,7 +155,7 @@ function renderProductsList() {
                             <span style="color: #6b7280; font-size: 0.875rem;">${product.category}</span>
                         </div>
                     </div>
-                    <button onclick="deleteProduct(${product.id})" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
+                    <button onclick="deleteProduct('${product.id}')" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
                         <i class="fas fa-trash"></i> Supprimer
                     </button>
                 </div>
@@ -207,15 +166,12 @@ function renderProductsList() {
     `;
 }
 
-// Gestion des utilisateurs
 function renderUsersList() {
   const usersList = document.getElementById("usersList");
-
-  if (users.length === 0) {
+  if (!users || users.length === 0) {
     usersList.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
     return;
   }
-
   usersList.innerHTML = `
         <h3>Utilisateurs inscrits (${users.length})</h3>
         <div style="display: grid; gap: 1rem;">
@@ -243,19 +199,15 @@ function renderUsersList() {
 }
 
 function isUserActive(user) {
+  if (!user.lastActivity) return false;
   const lastActivity = new Date(user.lastActivity);
   const now = new Date();
   const diffHours = (now - lastActivity) / (1000 * 60 * 60);
   return diffHours < 24;
 }
 
-// Statistiques
 function updateStats() {
-  const totalProducts = products.length;
-  const totalUsers = users.length;
-  const activeUsers = users.filter((user) => isUserActive(user)).length;
-
-  document.getElementById("totalProducts").textContent = totalProducts;
-  document.getElementById("totalUsers").textContent = totalUsers;
-  document.getElementById("activeUsers").textContent = activeUsers;
+  document.getElementById("totalProducts").textContent = products.length;
+  document.getElementById("totalUsers").textContent = users.length;
+  document.getElementById("activeUsers").textContent = users.filter(isUserActive).length;
 }
