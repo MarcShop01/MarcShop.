@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupLightbox();
   setupAdminListeners();
   window.toggleCart = toggleCart;
-  window.toggleAdmin = toggleAdmin;
+  // window.toggleAdmin = toggleAdmin; // admin retiré
 });
 
 function loadFirestoreProducts() {
@@ -41,8 +41,9 @@ function loadFirestoreUsers() {
       ...doc.data(),
       id: doc.id
     }));
-    renderUsersAdmin();
-    updateAdminStats();
+    // Optionnel : admin
+    // renderUsersAdmin();
+    // updateAdminStats();
   });
 }
 
@@ -67,6 +68,8 @@ function checkUserRegistration() {
     setTimeout(() => {
       document.getElementById("registrationModal").classList.add("active");
     }, 1000);
+  } else {
+    displayUserName();
   }
 }
 
@@ -80,6 +83,12 @@ function setupEventListeners() {
       await registerUser(name, email, phone);
     }
   });
+
+  document.getElementById("shareBtn").addEventListener("click", shareWebsite);
+
+  // Sur le logo ou le bouton user, affiche le nom inscrit
+  document.querySelector(".user-logo").addEventListener("click", showUserProfile);
+  document.getElementById("profileBtn").addEventListener("click", showUserProfile);
 
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.addEventListener("click", function () {
@@ -108,11 +117,7 @@ function setupLightbox() {
 }
 
 function setupAdminListeners() {
-  document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", function() {
-      switchTab(this.dataset.tab);
-    });
-  });
+  // Retiré - plus de bouton admin
 }
 
 window.openLightbox = openLightbox;
@@ -157,11 +162,22 @@ async function registerUser(name, email, phone) {
     newUser.id = ref.id;
     currentUser = newUser;
     saveCart();
+    displayUserName();
     document.getElementById("registrationModal").classList.remove("active");
   } catch (e) {
     alert("Erreur lors de l'inscription. Réessayez.");
     console.error(e);
   }
+}
+
+function displayUserName() {
+  const name = currentUser && currentUser.name ? currentUser.name : "MarcShop";
+  document.getElementById("userNameDisplay").textContent = name;
+}
+
+function showUserProfile() {
+  if (!currentUser) return;
+  alert(`Bienvenue ${currentUser.name}\nEmail : ${currentUser.email}\nTéléphone : ${currentUser.phone}`);
 }
 
 function renderProducts() {
@@ -383,36 +399,6 @@ function filterByCategory(category) {
   });
 }
 
-function renderUsersAdmin() {
-  const usersList = document.getElementById("usersList");
-  if (!usersList) return;
-  if (!users || users.length === 0) {
-    usersList.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
-    return;
-  }
-  usersList.innerHTML = users.map(user => `
-    <div class="admin-user-card" style="background:white; margin-bottom:1rem; border-radius:0.5rem; padding:1rem;">
-      <strong>${user.name}</strong><br>
-      <span>${user.email}</span><br>
-      <span>${user.phone}</span><br>
-      <small>Inscrit le : ${user.registeredAt ? new Date(user.registeredAt).toLocaleDateString() : ""}</small>
-    </div>
-  `).join("");
-}
-function updateAdminStats() {
-  const totalUsers = document.getElementById("totalUsers");
-  if (totalUsers) totalUsers.textContent = users.length;
-  const activeUsers = document.getElementById("activeUsers");
-  if (activeUsers) {
-    const active = users.filter(u => {
-      if (!u.lastActivity) return false;
-      const last = new Date(u.lastActivity);
-      return (new Date() - last) < 24*60*60*1000;
-    });
-    activeUsers.textContent = active.length;
-  }
-}
-
 function toggleCart() {
   const sidebar = document.getElementById("cartSidebar");
   const overlay = document.getElementById("overlay");
@@ -420,16 +406,8 @@ function toggleCart() {
   overlay.classList.toggle("active");
 }
 
-function toggleAdmin() {
-  const panel = document.getElementById("adminPanel");
-  const overlay = document.getElementById("overlay");
-  panel.classList.toggle("active");
-  overlay.classList.toggle("active");
-}
-
 function closeAllPanels() {
   document.getElementById("cartSidebar").classList.remove("active");
-  document.getElementById("adminPanel").classList.remove("active");
   document.getElementById("overlay").classList.remove("active");
   closeLightbox();
 }
