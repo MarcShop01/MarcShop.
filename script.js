@@ -8,7 +8,6 @@ let users = [];
 let currentProductImages = [];
 let currentImageIndex = 0;
 
-// Taille et couleur possibles
 const SIZES = ["XS", "S", "M", "L", "XL"];
 const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune"];
 
@@ -20,6 +19,8 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   setupLightbox();
   setupAdminListeners();
+  window.toggleCart = toggleCart;
+  window.toggleAdmin = toggleAdmin;
 });
 
 function loadFirestoreProducts() {
@@ -75,7 +76,6 @@ function setupEventListeners() {
     const name = document.getElementById("userName").value.trim();
     const email = document.getElementById("userEmail").value.trim();
     const phone = document.getElementById("userPhone").value.trim();
-
     if (name && email && phone) {
       await registerUser(name, email, phone);
     }
@@ -108,7 +108,6 @@ function setupLightbox() {
 }
 
 function setupAdminListeners() {
-  // Tabs admin
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", function() {
       switchTab(this.dataset.tab);
@@ -144,7 +143,6 @@ function changeImage(direction) {
   lightboxImg.src = currentProductImages[currentImageIndex];
 }
 
-// Inscription utilisateur (enregistre sur Firestore)
 async function registerUser(name, email, phone) {
   const newUser = {
     name: name,
@@ -166,7 +164,6 @@ async function registerUser(name, email, phone) {
   }
 }
 
-// Affichage des produits
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
   const sortedProducts = [...products].sort((a, b) => 
@@ -212,7 +209,6 @@ function renderProducts() {
   }).join("");
 }
 
-// Ajout au panier avec variantes
 window.addToCart = function(productId) {
   const product = products.find((p) => p.id === productId);
   if (!product) return;
@@ -282,7 +278,6 @@ function addProductToCart(product, size, color, quantity) {
   updateCartUI();
 }
 
-// Affichage du panier avec variantes et paiement PayPal
 function updateCartUI() {
   const cartCount = document.getElementById("cartCount");
   const cartItems = document.getElementById("cartItems");
@@ -326,7 +321,6 @@ function updateCartUI() {
   }
 }
 
-// updateQuantity/removeFromCart par key
 window.updateQuantity = function(key, newQuantity) {
   let item = cart.find((i) => i.key === key);
   if (!item) return;
@@ -344,7 +338,6 @@ window.removeFromCart = function(key) {
   updateCartUI();
 };
 
-// PayPal
 function renderPaypalButton(totalPrice) {
   if (!window.paypal) return;
   const container = document.getElementById("paypal-button-container");
@@ -374,7 +367,6 @@ function renderPaypalButton(totalPrice) {
   }).render('#paypal-button-container');
 }
 
-// Filtrage par catégorie
 function filterByCategory(category) {
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.classList.remove("active");
@@ -391,7 +383,6 @@ function filterByCategory(category) {
   });
 }
 
-// ADMIN : Affichage utilisateurs
 function renderUsersAdmin() {
   const usersList = document.getElementById("usersList");
   if (!usersList) return;
@@ -422,7 +413,6 @@ function updateAdminStats() {
   }
 }
 
-// UI panels
 function toggleCart() {
   const sidebar = document.getElementById("cartSidebar");
   const overlay = document.getElementById("overlay");
