@@ -52,27 +52,25 @@
     <header class="header">
         <div class="container">
             <div class="header-content">
-                <div class="logo">
-                    <h1>MarcShop</h1>
+                <div class="logo user-logo" style="cursor:pointer;">
+                    <h1 id="userNameDisplay">MarcShop</h1>
                 </div>
                 <div class="search-bar">
                     <i class="fas fa-search"></i>
                     <input type="text" placeholder="Rechercher des produits...">
                 </div>
                 <div class="header-actions">
-                    <button class="share-btn" onclick="shareWebsite()">
+                    <button class="share-btn" id="shareBtn">
                         <i class="fas fa-share-alt"></i>
                     </button>
-                    <button class="user-btn">
+                    <button class="user-btn" id="profileBtn">
                         <i class="fas fa-user"></i>
                     </button>
                     <button class="cart-btn" onclick="toggleCart()">
                         <i class="fas fa-shopping-cart"></i>
                         <span id="cartCount" class="cart-count">0</span>
                     </button>
-                    <button class="admin-btn" onclick="toggleAdmin()">
-                        <i class="fas fa-cog"></i>
-                    </button>
+                    <!-- Bouton admin retiré -->
                 </div>
             </div>
         </div>
@@ -132,35 +130,7 @@
         </div>
     </div>
 
-    <!-- Interface Admin -->
-    <div id="adminPanel" class="admin-panel">
-        <div class="admin-header">
-            <h3>Administration MarcShop</h3>
-            <button onclick="toggleAdmin()" class="close-btn">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="admin-tabs">
-            <button class="tab-btn active" data-tab="products">Produits</button>
-            <button class="tab-btn" data-tab="users">Utilisateurs</button>
-        </div>
-        <div id="productsTab" class="tab-content active">
-            <div id="productsList" class="products-list"></div>
-        </div>
-        <div id="usersTab" class="tab-content">
-            <div class="users-stats">
-                <div class="stat-card">
-                    <h4>Utilisateurs Totaux</h4>
-                    <span id="totalUsers">0</span>
-                </div>
-                <div class="stat-card">
-                    <h4>Utilisateurs Actifs</h4>
-                    <span id="activeUsers">0</span>
-                </div>
-            </div>
-            <div id="usersList" class="users-list"></div>
-        </div>
-    </div>
+    <!-- Interface Admin (optionnel, invisible pour client)-->
 
     <!-- Overlay -->
     <div id="overlay" class="overlay"></div>
