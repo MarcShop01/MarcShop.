@@ -150,7 +150,8 @@ function applyFilters() {
   // Puis filtrer par terme de recherche
   if (searchTerm) {
     filteredProducts = filteredProducts.filter(product => 
-      product.name.toLowerCase().includes(searchTerm)
+      product.name.toLowerCase().includes(searchTerm) ||
+      (product.description && product.description.toLowerCase().includes(searchTerm))
     );
   }
   
@@ -183,7 +184,21 @@ function openLightbox(productId, imgIndex = 0) {
   currentProductImages = product.images;
   currentImageIndex = imgIndex;
   const lightboxImg = document.getElementById("lightboxImage");
+  const descriptionDiv = document.getElementById("lightboxDescription");
+  
   lightboxImg.src = currentProductImages[currentImageIndex];
+  
+  // Afficher la description du produit si elle existe
+  if (product.description) {
+    descriptionDiv.innerHTML = `
+      <h3>${product.name}</h3>
+      <p>${product.description}</p>
+    `;
+    descriptionDiv.style.display = 'block';
+  } else {
+    descriptionDiv.style.display = 'none';
+  }
+  
   document.getElementById("productLightbox").style.display = "block";
   document.getElementById("overlay").classList.add("active");
 }
@@ -259,7 +274,7 @@ function renderProducts() {
         <div class="product-image" onclick="openLightbox('${product.id}')">
           <img src="${firstImage}" alt="${product.name}" class="product-img">
           <div class="product-badge">NOUVEAU</div>
-          <div class="discount-badge">-${discount}%</div>
+          ${discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
         </div>
         <div class="product-info">
           <div class="product-name">${product.name}</div>
@@ -269,7 +284,7 @@ function renderProducts() {
           </div>
           <div class="product-price">
             <span class="current-price">$${product.price.toFixed(2)}</span>
-            <span class="original-price">$${product.originalPrice.toFixed(2)}</span>
+            ${product.originalPrice > 0 ? `<span class="original-price">$${product.originalPrice.toFixed(2)}</span>` : ''}
           </div>
           <button class="add-to-cart" onclick="addToCart('${product.id}'); event.stopPropagation()">
             <i class="fas fa-shopping-cart"></i> Ajouter
