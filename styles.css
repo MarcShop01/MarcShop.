@@ -47,15 +47,23 @@ body {
 
 .search-bar i {
   position: absolute;
-  left: 1rem;
   top: 50%;
   transform: translateY(-50%);
   color: #6b7280;
 }
 
+.search-bar .fa-search {
+  left: 1rem;
+}
+
+.search-bar .clear-search {
+  right: 1rem;
+  display: none;
+}
+
 .search-bar input {
   width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  padding: 0.75rem 2.5rem;
   border: none;
   border-radius: 0.5rem;
   font-size: 0.875rem;
@@ -624,6 +632,27 @@ body {
 .next { right: 0; }
 .prev { left: 0; }
 
+/* Notification d'ajout au panier */
+.cart-notification {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 30px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.cart-notification.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .header-content {
@@ -636,11 +665,17 @@ body {
     margin-top: 1rem;
   }
 
-  .cart-sidebar,
-  .admin-panel {
+  /* Correction pour le panier mobile */
+  .cart-sidebar {
     width: 100%;
     right: -100%;
+    left: auto; /* Suppression du left: -100% problématique */
+  }
+
+  .admin-panel {
+    width: 100%;
     left: -100%;
+    right: auto;
   }
 
   .products-grid {
