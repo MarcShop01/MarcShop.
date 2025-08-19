@@ -3,10 +3,15 @@ const db = window.firebaseDB;
 
 let currentUser = null;
 let products = [];
+let allProducts = []; // Stocke tous les produits pour la recherche
+let filteredProducts = []; // Produits filtrés (recherche/catégorie)
 let cart = [];
 let users = [];
 let currentProductImages = [];
 let currentImageIndex = 0;
+let isAddingToCart = false;
+let searchTerm = '';
+let currentCategory = 'all';
 
 const SIZES = ["XS", "S", "M", "L", "XL"];
 const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune"];
@@ -20,18 +25,30 @@ document.addEventListener("DOMContentLoaded", () => {
   setupLightbox();
   setupAdminListeners();
   window.toggleCart = toggleCart;
-  // window.toggleAdmin = toggleAdmin; // admin retiré
 });
 
 function loadFirestoreProducts() {
   const productsCol = collection(db, "products");
   onSnapshot(productsCol, (snapshot) => {
-    products = snapshot.docs.map(doc => ({
+    allProducts = snapshot.docs.map(doc => ({
       ...doc.data(),
       id: doc.id
     }));
-    renderProducts();
+    
+    // Mélanger aléatoirement les produits
+    products = shuffleArray([...allProducts]);
+    
+    // Appliquer les filtres actuels (recherche et catégorie)
+    applyFilters();
   });
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
 }
 
 function loadFirestoreUsers() {
@@ -41,9 +58,6 @@ function loadFirestoreUsers() {
       ...doc.data(),
       id: doc.id
     }));
-    // Optionnel : admin
-    // renderUsersAdmin();
-    // updateAdminStats();
   });
 }
 
@@ -54,6 +68,7 @@ function loadCart() {
   } catch (e) {
     cart = [];
   }
+  updateCartUI(); // Mettre à jour l'UI immédiatement après chargement
 }
 
 function saveCart() {
@@ -61,6 +76,7 @@ function saveCart() {
   if (currentUser) {
     localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
   }
+  updateCartUI(); // Mettre à jour l'UI après chaque sauvegarde
 }
 
 function checkUserRegistration() {
@@ -86,12 +102,12 @@ function setupEventListeners() {
 
   document.getElementById("shareBtn").addEventListener("click", shareWebsite);
 
-  // Sur le logo ou le bouton user, affiche le nom inscrit
   document.querySelector(".user-logo").addEventListener("click", showUserProfile);
   document.getElementById("profileBtn").addEventListener("click", showUserProfile);
 
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.addEventListener("click", function () {
+      currentCategory = this.dataset.category;
       filterByCategory(this.dataset.category);
     });
   });
@@ -99,6 +115,46 @@ function setupEventListeners() {
   document.getElementById("overlay").addEventListener("click", () => {
     closeAllPanels();
   });
+  
+  // Recherche de produits
+  const searchInput = document.getElementById("searchInput");
+  const clearSearch = document.getElementById("clearSearch");
+  const searchIcon = document.getElementById("searchIcon");
+  
+  searchInput.addEventListener("input", (e) => {
+    searchTerm = e.target.value.toLowerCase().trim();
+    clearSearch.style.display = searchTerm ? 'block' : 'none';
+    applyFilters();
+  });
+  
+  clearSearch.addEventListener("click", () => {
+    searchInput.value = '';
+    searchTerm = '';
+    clearSearch.style.display = 'none';
+    applyFilters();
+  });
+  
+  searchIcon.addEventListener("click", () => {
+    applyFilters();
+  });
+}
+
+function applyFilters() {
+  // Filtrer d'abord par catégorie
+  if (currentCategory === 'all') {
+    filteredProducts = [...products];
+  } else {
+    filteredProducts = products.filter(product => product.category === currentCategory);
+  }
+  
+  // Puis filtrer par terme de recherche
+  if (searchTerm) {
+    filteredProducts = filteredProducts.filter(product => 
+      product.name.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  renderProducts();
 }
 
 function setupLightbox() {
@@ -182,19 +238,18 @@ function showUserProfile() {
 
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
-  const sortedProducts = [...products].sort((a, b) => 
-    new Date(b.createdAt) - new Date(a.createdAt)
-  );
-  if (sortedProducts.length === 0) {
+  
+  if (filteredProducts.length === 0) {
     grid.innerHTML = `
       <div class="no-products">
-        <h3>Aucun produit disponible</h3>
-        <p>Les produits seront affichés ici une fois ajoutés par l'administrateur.</p>
+        <h3>Aucun produit trouvé</h3>
+        <p>Aucun produit ne correspond à votre recherche.</p>
       </div>
     `;
     return;
   }
-  grid.innerHTML = sortedProducts.map(product => {
+  
+  grid.innerHTML = filteredProducts.map(product => {
     const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
@@ -226,8 +281,12 @@ function renderProducts() {
 }
 
 window.addToCart = function(productId) {
+  if (isAddingToCart) return;
+  
   const product = products.find((p) => p.id === productId);
   if (!product) return;
+  
+  isAddingToCart = true;
   openProductOptions(product);
 };
 
@@ -244,38 +303,53 @@ function openProductOptions(product) {
       <p><strong>${product.name}</strong></p>
       <form id="optionsForm">
         <label for="cartSize">Taille :</label>
-        <select id="cartSize" required>
+        <select id="cartSize" name="size" required>
           <option value="">Sélectionner</option>
           ${SIZES.map(s=>`<option value="${s}">${s}</option>`).join("")}
         </select>
         <label for="cartColor" style="margin-top:1rem;">Couleur :</label>
-        <select id="cartColor" required>
+        <select id="cartColor" name="color" required>
           <option value="">Sélectionner</option>
           ${COLORS.map(c=>`<option value="${c}">${c}</option>`).join("")}
         </select>
         <label for="cartQty" style="margin-top:1rem;">Quantité :</label>
-        <input type="number" id="cartQty" min="1" value="1" style="width:60px;">
-        <button type="submit" style="margin-top:1rem;background:#10b981;color:white;">Ajouter au panier</button>
+        <input type="number" id="cartQty" name="qty" min="1" value="1" style="width:60px;">
+        <button type="submit" id="submitOptions" style="margin-top:1rem;background:#10b981;color:white;">Ajouter au panier</button>
         <button type="button" id="closeOptions" style="margin-top:0.5rem;">Annuler</button>
       </form>
     </div>
   `;
   document.body.appendChild(modal);
-  document.getElementById("closeOptions").onclick = () => {modal.remove(); overlay.classList.remove("active");};
+  
+  document.getElementById("closeOptions").onclick = () => {
+    modal.remove(); 
+    overlay.classList.remove("active");
+    isAddingToCart = false;
+  };
+  
   document.getElementById("optionsForm").onsubmit = function(e) {
     e.preventDefault();
-    const size = document.getElementById("cartSize").value;
-    const color = document.getElementById("cartColor").value;
-    const qty = parseInt(document.getElementById("cartQty").value)||1;
+    const form = e.target;
+    const submitBtn = document.getElementById("submitOptions");
+    submitBtn.disabled = true;
+    
+    // Récupération correcte des valeurs
+    const size = form.elements.size.value;
+    const color = form.elements.color.value;
+    const qty = parseInt(form.elements.qty.value) || 1;
+    
     addProductToCart(product, size, color, qty);
+    
     modal.remove();
     overlay.classList.remove("active");
+    isAddingToCart = false;
   };
 }
 
 function addProductToCart(product, size, color, quantity) {
   const key = `${product.id}-${size}-${color}`;
   let existing = cart.find((item) => item.key === key);
+  
   if (existing) {
     existing.quantity += quantity;
   } else {
@@ -290,8 +364,31 @@ function addProductToCart(product, size, color, quantity) {
       color
     });
   }
+  
   saveCart();
-  updateCartUI();
+  
+  // Affiche une confirmation d'ajout
+  showCartNotification(`${product.name} ajouté au panier!`);
+}
+
+function showCartNotification(message) {
+  const notification = document.createElement("div");
+  notification.className = "cart-notification";
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  // Animation d'apparition
+  setTimeout(() => {
+    notification.classList.add("show");
+  }, 10);
+  
+  // Disparition après 2 secondes
+  setTimeout(() => {
+    notification.classList.remove("show");
+    setTimeout(() => {
+      notification.remove();
+    }, 300);
+  }, 2000);
 }
 
 function updateCartUI() {
@@ -320,7 +417,7 @@ function updateCartUI() {
         <img src="${item.image}" alt="${item.name}">
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
-          <div style="font-size:0.9em;color:#666;">Taille: <b>${item.size}</b>, Couleur: <b>${item.color}</b></div>
+          <div style="font-size:0.9em;color:#666;">Taille: <b>${item.size || "Non spécifiée"}</b>, Couleur: <b>${item.color || "Non spécifiée"}</b></div>
           <div class="cart-item-price">$${item.price.toFixed(2)}</div>
           <div class="quantity-controls">
             <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
@@ -333,7 +430,13 @@ function updateCartUI() {
         </div>
       </div>
     `).join("");
-    renderPaypalButton(totalPrice);
+    
+    // Gestion PayPal améliorée
+    setTimeout(() => {
+      if (totalPrice > 0) {
+        renderPaypalButton(totalPrice);
+      }
+    }, 300);
   }
 }
 
@@ -346,41 +449,68 @@ window.updateQuantity = function(key, newQuantity) {
     item.quantity = newQuantity;
   }
   saveCart();
-  updateCartUI();
 };
+
 window.removeFromCart = function(key) {
   cart = cart.filter((i) => i.key !== key);
   saveCart();
-  updateCartUI();
 };
 
 function renderPaypalButton(totalPrice) {
-  if (!window.paypal) return;
+  if (!window.paypal) {
+    console.warn("PayPal SDK non chargé");
+    return;
+  }
+  
   const container = document.getElementById("paypal-button-container");
   if (!container) return;
+  
+  // Réinitialiser complètement le conteneur
   container.innerHTML = "";
-  window.paypal.Buttons({
-    style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
-    createOrder: function(data, actions) {
-      return actions.order.create({
-        purchase_units: [{
-          amount: { value: totalPrice.toFixed(2) }
-        }]
-      });
-    },
-    onApprove: function(data, actions) {
-      return actions.order.capture().then(function(details) {
-        alert('Paiement réussi, merci ' + details.payer.name.given_name + ' !');
-        cart = [];
-        saveCart();
-        updateCartUI();
-      });
-    },
-    onError: function(err) {
-      alert("Une erreur est survenue avec PayPal.");
-      console.log(err);
-    }
-  }).render('#paypal-button-container');
+  
+  // Vérifier que le montant est valide
+  if (typeof totalPrice !== 'number' || totalPrice <= 0) {
+    console.error("Montant PayPal invalide:", totalPrice);
+    return;
+  }
+
+  try {
+    window.paypal.Buttons({
+      style: { 
+        layout: 'vertical', 
+        color: 'gold', 
+        shape: 'rect', 
+        label: 'paypal' 
+      },
+      createOrder: function(data, actions) {
+        return actions.order.create({
+          purchase_units: [{
+            amount: { 
+              value: totalPrice.toFixed(2),
+              currency_code: "USD"
+            }
+          }]
+        });
+      },
+      onApprove: function(data, actions) {
+        return actions.order.capture().then(function(details) {
+          alert('Paiement réussi, merci ' + details.payer.name.given_name + ' !');
+          cart = [];
+          saveCart();
+        });
+      },
+      onError: function(err) {
+        console.error("Erreur PayPal:", err);
+        // Réessayer après un délai
+        setTimeout(() => renderPaypalButton(totalPrice), 1000);
+      },
+      onCancel: function(data) {
+        console.log("Paiement annulé");
+      }
+    }).render('#paypal-button-container');
+  } catch (e) {
+    console.error("Erreur initialisation PayPal:", e);
+  }
 }
 
 function filterByCategory(category) {
@@ -388,15 +518,7 @@ function filterByCategory(category) {
     btn.classList.remove("active");
   });
   document.querySelector(`[data-category="${category}"]`).classList.add("active");
-
-  const productCards = document.querySelectorAll(".product-card");
-  productCards.forEach((card) => {
-    if (category === "all" || card.dataset.category === category) {
-      card.style.display = "block";
-    } else {
-      card.style.display = "none";
-    }
-  });
+  applyFilters();
 }
 
 function toggleCart() {
