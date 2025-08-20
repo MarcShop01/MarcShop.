@@ -3,8 +3,8 @@ const db = window.firebaseDB;
 
 let currentUser = null;
 let products = [];
-let allProducts = []; // Stocke tous les produits pour la recherche
-let filteredProducts = []; // Produits filtrés (recherche/catégorie)
+let allProducts = [];
+let filteredProducts = [];
 let cart = [];
 let users = [];
 let currentProductImages = [];
@@ -13,8 +13,18 @@ let isAddingToCart = false;
 let searchTerm = '';
 let currentCategory = 'all';
 
-const SIZES = ["XS", "S", "M", "L", "XL"];
-const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune"];
+// Options par catégorie
+const SIZE_OPTIONS = {
+  clothing: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  shoes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"],
+  electronics: ["Standard", "Petit", "Moyen", "Grand", "Extra Large"],
+  home: ["Petit", "Moyen", "Grand", "Personnalisé"],
+  sports: ["XS", "S", "M", "L", "XL", "XXL"],
+  beauty: ["100ml", "200ml", "250ml", "500ml", "1L"],
+  default: ["Unique", "Standard", "Personnalisé"]
+};
+
+const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune", "Rose", "Violet", "Orange", "Gris", "Marron", "Beige"];
 
 document.addEventListener("DOMContentLoaded", () => {
   loadFirestoreProducts();
@@ -68,7 +78,7 @@ function loadCart() {
   } catch (e) {
     cart = [];
   }
-  updateCartUI(); // Mettre à jour l'UI immédiatement après chargement
+  updateCartUI();
 }
 
 function saveCart() {
@@ -76,7 +86,7 @@ function saveCart() {
   if (currentUser) {
     localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
   }
-  updateCartUI(); // Mettre à jour l'UI après chaque sauvegarde
+  updateCartUI();
 }
 
 function checkUserRegistration() {
@@ -308,6 +318,11 @@ window.addToCart = function(productId) {
 function openProductOptions(product) {
   const overlay = document.getElementById("overlay");
   overlay.classList.add("active");
+  
+  // Déterminer les options de taille en fonction de la catégorie
+  const category = product.category || 'default';
+  const sizeOptions = SIZE_OPTIONS[category] || SIZE_OPTIONS.default;
+  
   let modal = document.createElement("div");
   modal.className = "modal";
   modal.style.display = "flex";
@@ -317,15 +332,15 @@ function openProductOptions(product) {
       <img src="${product.images[0]}" style="max-width:120px;max-height:120px;border-radius:6px;">
       <p><strong>${product.name}</strong></p>
       <form id="optionsForm">
-        <label for="cartSize">Taille :</label>
+        <label for="cartSize">Taille/Modèle :</label>
         <select id="cartSize" name="size" required>
           <option value="">Sélectionner</option>
-          ${SIZES.map(s=>`<option value="${s}">${s}</option>`).join("")}
+          ${sizeOptions.map(s => `<option value="${s}">${s}</option>`).join("")}
         </select>
         <label for="cartColor" style="margin-top:1rem;">Couleur :</label>
         <select id="cartColor" name="color" required>
           <option value="">Sélectionner</option>
-          ${COLORS.map(c=>`<option value="${c}">${c}</option>`).join("")}
+          ${COLORS.map(c => `<option value="${c}">${c}</option>`).join("")}
         </select>
         <label for="cartQty" style="margin-top:1rem;">Quantité :</label>
         <input type="number" id="cartQty" name="qty" min="1" value="1" style="width:60px;">
@@ -432,7 +447,7 @@ function updateCartUI() {
         <img src="${item.image}" alt="${item.name}">
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
-          <div style="font-size:0.9em;color:#666;">Taille: <b>${item.size || "Non spécifiée"}</b>, Couleur: <b>${item.color || "Non spécifiée"}</b></div>
+          <div style="font-size:0.9em;color:#666;">${item.size ? `Taille/Modèle: <b>${item.size}</b>, ` : ''}Couleur: <b>${item.color}</b></div>
           <div class="cart-item-price">$${item.price.toFixed(2)}</div>
           <div class="quantity-controls">
             <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
