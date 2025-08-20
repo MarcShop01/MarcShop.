@@ -1,10 +1,12 @@
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 const db = window.firebaseDB; // défini dans admin.html
 
 const ADMIN_PASSWORD = "marcshop2024";
 let products = [];
 let users = [];
+let orders = [];
+let cartActivities = [];
 let isLoggedIn = false;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -12,6 +14,8 @@ document.addEventListener("DOMContentLoaded", () => {
   checkAdminSession();
   listenProducts();
   listenUsers();
+  listenOrders();
+  listenCartActivities();
 });
 
 function listenProducts() {
@@ -21,11 +25,32 @@ function listenProducts() {
     updateStats();
   });
 }
+
 function listenUsers() {
   onSnapshot(collection(db, "users"), (snapshot) => {
     users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     renderUsersList();
     updateStats();
+  });
+}
+
+function listenOrders() {
+  onSnapshot(collection(db, "orders"), (snapshot) => {
+    orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    renderOrdersList();
+    updateStats();
+  });
+}
+
+function listenCartActivities() {
+  const activitiesQuery = query(collection(db, "cartActivities"), orderBy("timestamp", "desc"));
+  onSnapshot(activitiesQuery, (snapshot) => {
+    cartActivities = snapshot.docs.map(doc => ({ 
+      ...doc.data(), 
+      id: doc.id,
+      timestamp: doc.data().timestamp ? doc.data().timestamp.toDate() : new Date()
+    }));
+    renderActivitiesList();
   });
 }
 
@@ -66,15 +91,18 @@ function login() {
     document.getElementById("adminPassword").value = "";
   }
 }
+
 function logout() {
   localStorage.removeItem("marcshop-admin-session");
   showLogin();
 }
+
 function showLogin() {
   document.getElementById("adminLogin").style.display = "flex";
   document.getElementById("adminDashboard").style.display = "none";
   isLoggedIn = false;
 }
+
 function showDashboard() {
   document.getElementById("adminLogin").style.display = "none";
   document.getElementById("adminDashboard").style.display = "block";
@@ -82,7 +110,10 @@ function showDashboard() {
   updateStats();
   renderProductsList();
   renderUsersList();
+  renderOrdersList();
+  renderActivitiesList();
 }
+
 window.showSection = function(sectionName) {
   document.querySelectorAll(".sidebar-btn").forEach((btn) => btn.classList.remove("active"));
   document.querySelectorAll(".admin-section").forEach((section) => section.classList.remove("active"));
@@ -91,6 +122,8 @@ window.showSection = function(sectionName) {
   if (sectionName === "dashboard") updateStats();
   if (sectionName === "products") renderProductsList();
   if (sectionName === "users") renderUsersList();
+  if (sectionName === "orders") renderOrdersList();
+  if (sectionName === "activities") renderActivitiesList();
 }
 
 async function addProduct() {
@@ -123,7 +156,7 @@ async function addProduct() {
 window.deleteProduct = async function(id) {
   if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
     try {
-      await deleteDoc(doc(db, "products", id));
+      await deleteDoc(doc(db极速加速器 "products", id));
     } catch (e) {
       alert("Erreur suppression: " + e.message);
     }
@@ -151,12 +184,12 @@ function renderProductsList() {
                         <div>
                             <strong>${product.name}</strong><br>
                             <span style="color: #10b981; font-weight: bold;">$${product.price.toFixed(2)}</span>
-                            <span style="color: #6b7280; text-decoration: line-through; margin-left: 0.5rem;">$${product.originalPrice.toFixed(2)}</span><br>
+                            <span style="color: #6b7280; text-decoration: line-through; margin-left: 0.5rem;">$${product.originalPrice.to极速加速器(2)}</span><br>
                             <span style="color: #6b7280; font-size: 0.875rem;">${product.category}</span>
                         </div>
                     </div>
-                    <button onclick="deleteProduct('${product.id}')" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
-                        <i class="fas fa-trash"></i> Supprimer
+                    <button onclick="deleteProduct('${product.id}')" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25极速加速器; cursor: pointer;">
+                        <极速加速器 class="fas fa-trash"></i> Supprimer
                     </button>
                 </div>
             `
@@ -169,7 +202,7 @@ function renderProductsList() {
 function renderUsersList() {
   const usersList = document.getElementById("usersList");
   if (!users || users.length === 0) {
-    usersList.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
+    users极速加速器L.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
     return;
   }
   usersList.innerHTML = `
@@ -198,6 +231,131 @@ function renderUsersList() {
     `;
 }
 
+function renderOrdersList() {
+  const ordersList = document.getElementById("ordersList");
+  if (!orders || orders.length === 0) {
+    ordersList.innerHTML = "<p>Aucune commande.</p>";
+    return;
+  }
+  
+  ordersList.innerHTML = `
+        <h3>Commandes (${orders.length})</h3>
+        <div style="display: grid; gap: 1rem;">
+            ${orders
+              .map((order) => {
+                const orderDate = order.createdAt ? order.createdAt.toDate().toLocaleDateString() : 'Date inconnue';
+                return `
+                    <div style="border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; overflow: hidden;">
+                        <div style="background: #f9fafb; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>Commande #${order.id.slice(-6)}</strong><br>
+                                <span>${order.customerName} - ${order.customerEmail}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
+                                    ${order.status || 'En attente'}
+                                </span>
+                                <div>${orderDate}</div>
+                            </div>
+                        </div>
+                        <div style="padding: 1rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                <div>
+                                    <strong>Adresse de livraison:</strong><br>
+                                    ${order.shippingAddress ? `
+                                        ${order.shippingAddress.street}<br>
+                                        ${order.shippingAddress.postalCode} ${order.shippingAddress.city}<br>
+                                        ${order.shippingAddress.country}
+                                    ` : 'Non spécifiée'}
+                                </div>
+                                <div>
+                                    <strong>Total: $${order.total.toFixed(2)}</strong><br>
+                                    <span>${order.items.length} article(s)</span>
+                                </div>
+                            </div>
+                            <div>
+                                <strong>Articles:</strong>
+                                <div style="margin-top: 0.5rem;">
+                                    ${order.items.map(item => `
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #f9fafb; border-radius: 0.25rem; margin-bottom: 0.25rem;">
+                                            <img src="${item.image}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 0.25rem;">
+                                            <div>
+                                                <div>${item.name}</div>
+                                                <div style="font-size: 0.875rem; color: #6b7280;">
+                                                    ${item.size ? `Taille: ${item.size}, ` : ''}Couleur: ${item.color}, Quantité: ${item.quantity}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+              })
+              .join("")}
+        </div>
+    `;
+}
+
+function renderActivitiesList() {
+  const activitiesList = document.getElementById("activitiesList");
+  if (!cartActivities || cartActivities.length === 0) {
+    activitiesList.innerHTML = "<p>Aucune activité récente.</p>";
+    return;
+  }
+  
+  activitiesList.innerHTML = `
+        <h3>Activités récentes (${cartActivities.length})</h3>
+        <div style="display: grid; gap: 1rem;">
+            ${cartActivities
+              .map((activity) => {
+                const activityDate = activity.timestamp ? activity.timestamp.toLocaleString() : 'Date inconnue';
+                let actionText = '';
+                let actionColor = '';
+                
+                switch(activity.action) {
+                  case 'add':
+                    actionText = `a ajouté "${activity.productName}" au panier`;
+                    actionColor = '#10b981';
+                    break;
+                  case 'remove':
+                    actionText = `a retiré "${activity.productName}" du panier`;
+                    actionColor = '#ef4444';
+                    break;
+                  case 'purchase':
+                    actionText = `a effectué un achat de $${activity.total.toFixed(2)}`;
+                    actionColor = '#3b82f6';
+                    break;
+                  default:
+                    actionText = `a effectué une action`;
+                    actionColor = '#6b7280';
+                }
+                
+                return `
+                    <div style="border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; padding: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div>
+                                <strong>${activity.userName}</strong> ${actionText}
+                            </div>
+                            <span style="background: ${actionColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
+                                ${activity.action}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.875rem; color: #6b7280;">
+                            ${activityDate}
+                            ${activity.size ? ` • Taille: ${activity.size}` : ''}
+                            ${activity.color ? ` • Couleur: ${activity.color}` : ''}
+                            ${activity.quantity ? ` • Quantité: ${activity.quantity}` : ''}
+                        </div>
+                    </div>
+                `;
+              })
+              .join("")}
+        </div>
+    `;
+}
+
 function isUserActive(user) {
   if (!user.lastActivity) return false;
   const lastActivity = new Date(user.lastActivity);
@@ -210,4 +368,5 @@ function updateStats() {
   document.getElementById("totalProducts").textContent = products.length;
   document.getElementById("totalUsers").textContent = users.length;
   document.getElementById("activeUsers").textContent = users.filter(isUserActive).length;
+  document.getElementById("totalOrders").textContent = orders.length;
 }
