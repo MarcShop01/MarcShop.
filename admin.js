@@ -1,7 +1,6 @@
 import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-const db = window.firebaseDB; // défini dans admin.html
-
+const db = window.firebaseDB;
 const ADMIN_PASSWORD = "marcshop2024";
 let products = [];
 let users = [];
@@ -36,7 +35,11 @@ function listenUsers() {
 
 function listenOrders() {
   onSnapshot(collection(db, "orders"), (snapshot) => {
-    orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    orders = snapshot.docs.map(doc => ({ 
+      ...doc.data(), 
+      id: doc.id,
+      createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
+    }));
     renderOrdersList();
     updateStats();
   });
@@ -156,7 +159,7 @@ async function addProduct() {
 window.deleteProduct = async function(id) {
   if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
     try {
-      await deleteDoc(doc(db极速加速器 "products", id));
+      await deleteDoc(doc(db, "products", id));
     } catch (e) {
       alert("Erreur suppression: " + e.message);
     }
@@ -184,12 +187,12 @@ function renderProductsList() {
                         <div>
                             <strong>${product.name}</strong><br>
                             <span style="color: #10b981; font-weight: bold;">$${product.price.toFixed(2)}</span>
-                            <span style="color: #6b7280; text-decoration: line-through; margin-left: 0.5rem;">$${product.originalPrice.to极速加速器(2)}</span><br>
+                            <span style="color: #6b7280; text-decoration: line-through; margin-left: 0.5rem;">$${product.originalPrice.toFixed(2)}</span><br>
                             <span style="color: #6b7280; font-size: 0.875rem;">${product.category}</span>
                         </div>
                     </div>
-                    <button onclick="deleteProduct('${product.id}')" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25极速加速器; cursor: pointer;">
-                        <极速加速器 class="fas fa-trash"></i> Supprimer
+                    <button onclick="deleteProduct('${product.id}')" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
+                        <i class="fas fa-trash"></i> Supprimer
                     </button>
                 </div>
             `
@@ -202,7 +205,7 @@ function renderProductsList() {
 function renderUsersList() {
   const usersList = document.getElementById("usersList");
   if (!users || users.length === 0) {
-    users极速加速器L.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
+    usersList.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
     return;
   }
   usersList.innerHTML = `
@@ -243,7 +246,7 @@ function renderOrdersList() {
         <div style="display: grid; gap: 1rem;">
             ${orders
               .map((order) => {
-                const orderDate = order.createdAt ? order.createdAt.toDate().toLocaleDateString() : 'Date inconnue';
+                const orderDate = order.createdAt ? order.createdAt.toLocaleDateString() : 'Date inconnue';
                 return `
                     <div style="border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; overflow: hidden;">
                         <div style="background: #f9fafb; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
@@ -263,9 +266,9 @@ function renderOrdersList() {
                                 <div>
                                     <strong>Adresse de livraison:</strong><br>
                                     ${order.shippingAddress ? `
-                                        ${order.shippingAddress.street}<br>
-                                        ${order.shippingAddress.postalCode} ${order.shippingAddress.city}<br>
-                                        ${order.shippingAddress.country}
+                                        ${order.shippingAddress.street || 'Non spécifié'}<br>
+                                        ${order.shippingAddress.postalCode || ''} ${order.shippingAddress.city || ''}<br>
+                                        ${order.shippingAddress.country || ''}
                                     ` : 'Non spécifiée'}
                                 </div>
                                 <div>
@@ -368,5 +371,4 @@ function updateStats() {
   document.getElementById("totalProducts").textContent = products.length;
   document.getElementById("totalUsers").textContent = users.length;
   document.getElementById("activeUsers").textContent = users.filter(isUserActive).length;
-  document.getElementById("totalOrders").textContent = orders.length;
 }
