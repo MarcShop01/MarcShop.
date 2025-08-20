@@ -148,6 +148,10 @@
                 <button class="sidebar-btn" onclick="showSection('orders')">
                     <i class="fas fa-shopping-cart"></i> Commandes
                 </button>
+                <!-- Bouton Activités ajouté ici -->
+                <button class="sidebar-btn" onclick="showSection('activities')">
+                  <i class="fas fa-history"></i> Activités
+                </button>
             </div>
             <div class="admin-main">
                 <div id="dashboardSection" class="admin-section active">
@@ -236,6 +240,11 @@
                 <div id="ordersSection" class="admin-section">
                     <h2>Gestion des commandes</h2>
                     <p>Fonctionnalité en développement...</p>
+                </div>
+                <!-- Section Activités ajoutée ici -->
+                <div id="activitiesSection" class="admin-section">
+                  <h2>Activités des clients</h2>
+                  <div id="activitiesList"></div>
                 </div>
             </div>
         </div>
