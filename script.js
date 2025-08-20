@@ -273,7 +273,7 @@ function renderProducts() {
     const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
-    const firstImage = product.images[0] || "https://via.placeholder.com/200?text=Image+Manquante";
+    const firstImage = product.images && product.images[0] ? product.images[0] : "https://via.placeholder.com/200?text=Image+Manquante";
     return `
       <div class="product-card" data-category="${product.category}">
         <div class="product-image" onclick="openLightbox('${product.id}')">
@@ -337,7 +337,7 @@ function openProductOptions(product) {
       <img src="${product.images[0]}" style="max-width:120px;max-height:120px;border-radius:6px;">
       <p><strong>${product.name}</strong></p>
       <form id="optionsForm">
-        <label for="cartSize">${极速加速器izeLabel} :</label>
+        <label for="cartSize">${sizeLabel} :</label>
         <select id="cartSize" name="size" required>
           <option value="">Sélectionner</option>
           ${sizeOptions.map(s => `<option value="${s}">${s}</option>`).join("")}
@@ -348,7 +348,7 @@ function openProductOptions(product) {
           ${COLORS.map(c => `<option value="${c}">${c}</option>`).join("")}
         </select>
         <label for="cartQty" style="margin-top:1rem;">Quantité :</label>
-        <input type="number" id="cartQ极速加速器" name="qty" min="1" value="1" style="width:60px;">
+        <input type="number" id="cartQty" name="qty" min="1" value="1" style="width:60px;">
         <button type="submit" id="submitOptions" style="margin-top:1rem;background:#10b981;color:white;">Ajouter au panier</button>
         <button type="button" id="closeOptions" style="margin-top:0.5rem;">Annuler</button>
       </form>
@@ -396,7 +396,8 @@ function addProductToCart(product, size, color, quantity) {
       image: product.images[0],
       quantity,
       size,
-      color
+      color,
+      category: product.category
     });
   }
   
@@ -448,7 +449,7 @@ function updateCartUI() {
   const cartTotal = document.getElementById("cartTotal");
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cart.reduce((sum, item)极速加速器 sum + item.price * item.quantity, 0);
+  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   cartCount.textContent = totalItems;
   cartTotal.textContent = totalPrice.toFixed(2);
