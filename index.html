@@ -11,8 +11,6 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
       import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-      import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-      
       window.firebaseConfig = {
         apiKey: "AIzaSyC_krW6QcyTS6JZNJf-_7YAc_491mCWYaQ",
         authDomain: "marchat-e4d21.firebaseapp.com",
@@ -22,16 +20,8 @@
         appId: "1:211043298263:web:dcf751d299aa4360d83992",
         measurementId: "G-CZHXLDZTBW"
       };
-      
-      // Initialiser Firebase
       window.firebaseApp = initializeApp(window.firebaseConfig);
       window.firebaseDB = getFirestore(window.firebaseApp);
-      window.firebaseAuth = getAuth(window.firebaseApp);
-      
-      // Fonction de connexion admin
-      window.adminLogin = function(email, password) {
-        return signInWithEmailAndPassword(window.firebaseAuth, email, password);
-      };
     </script>
 </head>
 <body>
@@ -58,24 +48,6 @@
         </div>
     </div>
 
-    <!-- Modal de connexion admin -->
-    <div id="adminLoginModal" class="modal">
-        <div class="modal-content">
-            <h2>Connexion Admin</h2>
-            <form id="adminLoginForm">
-                <div class="input-group">
-                    <i class="fas fa-envelope"></i>
-                    <input type="email" id="adminEmail" placeholder="Email admin" required>
-                </div>
-                <div class="input-group">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" id="adminPassword" placeholder="Mot de passe" required>
-                </div>
-                <button type="submit">Se connecter</button>
-            </form>
-        </div>
-    </div>
-
     <!-- Header -->
     <header class="header">
         <div class="container">
@@ -98,10 +70,6 @@
                     <button class="cart-btn" onclick="toggleCart()">
                         <i class="fas fa-shopping-cart"></i>
                         <span id="cartCount" class="cart-count">0</span>
-                    </button>
-                    <!-- Bouton admin -->
-                    <button class="admin-btn" id="adminBtn" style="display: none;">
-                        <i class="fas fa-cog"></i>
                     </button>
                 </div>
             </div>
@@ -165,85 +133,14 @@
         </div>
     </div>
 
-    <!-- Interface Admin -->
-    <div id="adminPanel" class="admin-panel">
-        <div class="admin-header">
-            <h3>Panel Administrateur</h3>
-            <button onclick="toggleAdminPanel()" class="close-btn">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="admin-tabs">
-            <button class="tab-btn active" data-tab="users">Utilisateurs</button>
-            <button class="tab-btn" data-tab="orders">Commandes</button>
-            <button class="tab-btn" data-tab="products">Produits</button>
-            <button class="tab-btn" data-tab="stats">Statistiques</button>
-        </div>
-        <div class="tab-content active" id="usersTab">
-            <h4>Utilisateurs Actifs</h4>
-            <div id="activeUsersList" class="admin-list"></div>
-        </div>
-        <div class="tab-content" id="ordersTab">
-            <h4>Commandes</h4>
-            <div id="ordersList" class="admin-list"></div>
-        </div>
-        <div class="tab-content" id="productsTab">
-            <h4>Gestion des Produits</h4>
-            <div class="add-product-form">
-                <h5>Ajouter un produit</h5>
-                <form id="addProductForm">
-                    <input type="text" id="productName" placeholder="Nom du produit" required>
-                    <textarea id="productDescription" placeholder="Description" required></textarea>
-                    <input type="number" id="productPrice" placeholder="Prix" step="0.01" required>
-                    <input type="number" id="productOriginalPrice" placeholder="Prix original" step="0.01">
-                    <select id="productCategory" required>
-                        <option value="">Choisir une catégorie</option>
-                        <option value="clothing">Vêtements</option>
-                        <option value="shoes">Chaussures</option>
-                        <option value="electronics">Électronique</option>
-                        <option value="home">Maison</option>
-                        <option value="sports">Sports</option>
-                        <option value="beauty">Beauté</option>
-                        <option value="hair">Cheveux & Perruques</option>
-                    </select>
-                    <input type="text" id="productImages" placeholder URLs des images (séparées par des virgules)" required>
-                    <button type="submit">Ajouter le produit</button>
-                </form>
-            </div>
-            <h5>Tous les produits</h5>
-            <div id="productsList" class="admin-list"></div>
-        </div>
-        <div class="tab-content" id="statsTab">
-            <h4>Statistiques</h4>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h5>Utilisateurs totaux</h5>
-                    <span id="totalUsers">0</span>
-                </div>
-                <div class="stat-card">
-                    <h5>Commandes totales</h5>
-                    <span id="totalOrders">0</span>
-                </div>
-                <div class="stat-card">
-                    <h5>Produits vendus</h5>
-                    <span id="totalProductsSold">0</span>
-                </div>
-                <div class="stat-card">
-                    <h5>Revenu total</h5>
-                    <span id="totalRevenue">0$</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Overlay -->
     <div id="overlay" class="overlay"></div>
     
     <!-- Lightbox pour les images de produits -->
     <div id="productLightbox" class="lightbox">
-        <span class="close">&times;</span>
-        <span class="arrow prev">&#10094;</span>
-        <span class="arrow next">&#10095;</span>
+        <span class="close" onclick="closeLightbox()">&times;</span>
+        <span class="arrow prev" onclick="changeImage(-1)">&#10094;</span>
+        <span class="arrow next" onclick="changeImage(1)">&#10095;</span>
         <img class="lightbox-content" id="lightboxImage">
         <div id="lightboxDescription" class="lightbox-description"></div>
     </div>
