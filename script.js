@@ -1,4 +1,12 @@
-import { collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  updateDoc, 
+  doc, 
+  deleteDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 const db = window.firebaseDB;
 
 let currentUser = null;
@@ -96,6 +104,21 @@ function checkUserRegistration() {
     }, 1000);
   } else {
     displayUserName();
+    // Mettre à jour l'activité de l'utilisateur
+    updateUserActivity();
+  }
+}
+
+function updateUserActivity() {
+  if (currentUser) {
+    // Mettre à jour le timestamp de dernière activité
+    const userRef = doc(db, "users", currentUser.id);
+    updateDoc(userRef, {
+      lastActivity: serverTimestamp(),
+      isActive: true
+    }).catch(error => {
+      console.error("Erreur mise à jour activité:", error);
+    });
   }
 }
 
@@ -314,7 +337,7 @@ function openProductOptions(product) {
       <img src="${product.images[0]}" style="max-width:120px;max-height:120px;border-radius:6px;">
       <p><strong>${product.name}</strong></p>
       <form id="optionsForm">
-        <label for="cartSize">${sizeLabel} :</label>
+        <label for="cartSize">${极速加速器izeLabel} :</label>
         <select id="cartSize" name="size" required>
           <option value="">Sélectionner</option>
           ${sizeOptions.map(s => `<option value="${s}">${s}</option>`).join("")}
@@ -325,7 +348,7 @@ function openProductOptions(product) {
           ${COLORS.map(c => `<option value="${c}">${c}</option>`).join("")}
         </select>
         <label for="cartQty" style="margin-top:1rem;">Quantité :</label>
-        <input type="number" id="cartQty" name="qty" min="1" value="1" style="width:60px;">
+        <input type="number" id="cartQ极速加速器" name="qty" min="1" value="1" style="width:60px;">
         <button type="submit" id="submitOptions" style="margin-top:1rem;background:#10b981;color:white;">Ajouter au panier</button>
         <button type="button" id="closeOptions" style="margin-top:0.5rem;">Annuler</button>
       </form>
@@ -379,6 +402,22 @@ function addProductToCart(product, size, color, quantity) {
   
   saveCart();
   
+  // Enregistrer l'action dans Firestore pour l'admin
+  if (currentUser) {
+    addDoc(collection(db, "cartActivities"), {
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userEmail: currentUser.email,
+      action: "add",
+      productId: product.id,
+      productName: product.name,
+      size: size,
+      color: color,
+      quantity: quantity,
+      timestamp: serverTimestamp()
+    });
+  }
+  
   // Affiche une confirmation d'ajout
   showCartNotification(`${product.name} ajouté au panier!`);
 }
@@ -409,7 +448,7 @@ function updateCartUI() {
   const cartTotal = document.getElementById("cartTotal");
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = cart.reduce((sum, item)极速加速器 sum + item.price * item.quantity, 0);
 
   cartCount.textContent = totalItems;
   cartTotal.textContent = totalPrice.toFixed(2);
@@ -479,8 +518,25 @@ window.updateQuantity = function(key, newQuantity) {
 };
 
 window.removeFromCart = function(key) {
+  const item = cart.find((i) => i.key === key);
   cart = cart.filter((i) => i.key !== key);
   saveCart();
+  
+  // Enregistrer l'action dans Firestore pour l'admin
+  if (currentUser && item) {
+    addDoc(collection(db, "cartActivities"), {
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userEmail: currentUser.email,
+      action: "remove",
+      productId: item.id,
+      productName: item.name,
+      size: item.size,
+      color: item.color,
+      quantity: item.quantity,
+      timestamp: serverTimestamp()
+    });
+  }
 };
 
 function renderPaypalButton(totalPrice) {
@@ -520,10 +576,49 @@ function renderPaypalButton(totalPrice) {
         });
       },
       onApprove: function(data, actions) {
-        return actions.order.capture().then(function(details) {
-          alert('Paiement réussi, merci ' + details.payer.name.given_name + ' !');
-          cart = [];
-          saveCart();
+        return actions.order.capture().then(async function(details) {
+          // Enregistrer la commande dans Firestore
+          try {
+            const orderData = {
+              customerId: currentUser.id,
+              customerName: currentUser.name,
+              customerEmail: currentUser.email,
+              customerPhone: currentUser.phone,
+              items: cart,
+              total: totalPrice,
+              status: 'pending',
+              paymentId: data.orderID,
+              paymentDetails: details,
+              createdAt: serverTimestamp(),
+              shippingAddress: {
+                street: details.payer.address.address_line_1,
+                city: details.payer.address.admin_area_2,
+                state: details.payer.address.admin_area_1,
+                postalCode: details.payer.address.postal_code,
+                country: details.payer.address.country_code
+              }
+            };
+            
+            await addDoc(collection(db, "orders"), orderData);
+            
+            // Enregistrer l'action de paiement
+            await addDoc(collection(db, "cartActivities"), {
+              userId: currentUser.id,
+              userName: currentUser.name,
+              userEmail: currentUser.email,
+              action: "purchase",
+              items: cart,
+              total: totalPrice,
+              timestamp: serverTimestamp()
+            });
+            
+            alert('Paiement réussi, merci ' + details.payer.name.given_name + ' !');
+            cart = [];
+            saveCart();
+          } catch (error) {
+            console.error("Erreur enregistrement commande:", error);
+            alert("Paiement réussi mais erreur d'enregistrement de la commande");
+          }
         });
       },
       onError: function(err) {
