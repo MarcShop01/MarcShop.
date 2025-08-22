@@ -1,12 +1,4 @@
-import { 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  updateDoc, 
-  doc, 
-  deleteDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 const db = window.firebaseDB;
 
 let currentUser = null;
@@ -29,7 +21,6 @@ const SIZE_OPTIONS = {
   home: ["Petit", "Moyen", "Grand", "Personnalisé"],
   sports: ["XS", "S", "M", "L", "XL", "XXL"],
   beauty: ["100ml", "200ml", "250ml", "500ml", "1L"],
-  hair: ["12\"", "14\"", "16\"", "18\"", "20\"", "22\"", "24\"", "26\"", "28\"", "30\"", "32\"", "34\"", "36\""],
   default: ["Unique", "Standard", "Personnalisé"]
 };
 
@@ -87,14 +78,63 @@ function loadCart() {
     cart = [];
   }
   updateCartUI();
+  syncCartToFirestore();
 }
 
 function saveCart() {
   localStorage.setItem("marcshop-cart", JSON.stringify(cart));
   if (currentUser) {
     localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
+    updateUserActivity();
+    syncCartToFirestore();
   }
   updateCartUI();
+}
+
+// Synchroniser le panier avec Firestore
+async function syncCartToFirestore() {
+  if (!currentUser) return;
+  
+  try {
+    // Vérifier si l'utilisateur a déjà un panier
+    const cartsQuery = query(collection(db, "carts"), where("userId", "==", currentUser.id));
+    const querySnapshot = await getDocs(cartsQuery);
+    
+    if (!querySnapshot.empty) {
+      // Mettre à jour le panier existant
+      const cartDoc = querySnapshot.docs[0];
+      await updateDoc(doc(db, "carts", cartDoc.id), {
+        items: cart,
+        totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+        lastUpdated: new Date().toISOString()
+      });
+    } else {
+      // Créer un nouveau panier
+      await addDoc(collection(db, "carts"), {
+        userId: currentUser.id,
+        items: cart,
+        totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error("Erreur synchronisation panier:", error);
+  }
+}
+
+// Mettre à jour l'activité de l'utilisateur
+async function updateUserActivity() {
+  if (!currentUser) return;
+  
+  try {
+    const userRef = doc(db, "users", currentUser.id);
+    await updateDoc(userRef, {
+      lastActivity: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Erreur mise à jour activité:", error);
+  }
 }
 
 function checkUserRegistration() {
@@ -104,21 +144,6 @@ function checkUserRegistration() {
     }, 1000);
   } else {
     displayUserName();
-    // Mettre à jour l'activité de l'utilisateur
-    updateUserActivity();
-  }
-}
-
-function updateUserActivity() {
-  if (currentUser) {
-    // Mettre à jour le timestamp de dernière activité
-    const userRef = doc(db, "users", currentUser.id);
-    updateDoc(userRef, {
-      lastActivity: serverTimestamp(),
-      isActive: true
-    }).catch(error => {
-      console.error("Erreur mise à jour activité:", error);
-    });
   }
 }
 
@@ -172,18 +197,42 @@ function setupEventListeners() {
   });
 }
 
+function applyFilters() {
+  // Filtrer d'abord par catégorie
+  if (currentCategory === 'all') {
+    filteredProducts = [...products];
+  } else {
+    filteredProducts = products.filter(product => product.category === currentCategory);
+  }
+  
+  // Puis filtrer par terme de recherche
+  if (searchTerm) {
+    filteredProducts = filteredProducts.filter(product => 
+      product.name.toLowerCase().includes(searchTerm) ||
+      (product.description && product.description.toLowerCase().includes(searchTerm))
+    );
+  }
+  
+  renderProducts();
+}
+
 function setupLightbox() {
   const lightbox = document.getElementById("productLightbox");
   const closeBtn = lightbox.querySelector(".close");
   const prevBtn = lightbox.querySelector(".prev");
   const nextBtn = lightbox.querySelector(".next");
   
+  closeBtn.addEventListener("click", closeLightbox);
+  prevBtn.addEventListener("click", () => changeImage(-1));
+  nextBtn.addEventListener("click", () => changeImage(1));
+  
   window.addEventListener("click", (e) => {
     if (e.target === lightbox) closeLightbox();
   });
 }
 
-window.openLightbox = function(productId, imgIndex = 0) {
+window.openLightbox = openLightbox;
+function openLightbox(productId, imgIndex = 0) {
   const product = products.find(p => p.id === productId);
   if (!product || !product.images || product.images.length === 0) return;
   currentProductImages = product.images;
@@ -206,7 +255,7 @@ window.openLightbox = function(productId, imgIndex = 0) {
   
   document.getElementById("productLightbox").style.display = "block";
   document.getElementById("overlay").classList.add("active");
-};
+}
 
 function closeLightbox() {
   document.getElementById("productLightbox").style.display = "none";
@@ -273,7 +322,7 @@ function renderProducts() {
     const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
-    const firstImage = product.images && product.images[0] ? product.images[0] : "https://via.placeholder.com/200?text=Image+Manquante";
+    const firstImage = product.images[0] || "https://via.placeholder.com/200?text=Image+Manquante";
     return `
       <div class="product-card" data-category="${product.category}">
         <div class="product-image" onclick="openLightbox('${product.id}')">
@@ -318,16 +367,6 @@ function openProductOptions(product) {
   const category = product.category || 'default';
   const sizeOptions = SIZE_OPTIONS[category] || SIZE_OPTIONS.default;
   
-  // Déterminer le label en fonction de la catégorie
-  let sizeLabel = 'Taille/Modèle';
-  if (category === 'hair') {
-    sizeLabel = 'Longueur (pouces)';
-  } else if (category === 'shoes') {
-    sizeLabel = 'Pointure';
-  } else if (category === 'beauty') {
-    sizeLabel = 'Volume';
-  }
-  
   let modal = document.createElement("div");
   modal.className = "modal";
   modal.style.display = "flex";
@@ -337,7 +376,7 @@ function openProductOptions(product) {
       <img src="${product.images[0]}" style="max-width:120px;max-height:120px;border-radius:6px;">
       <p><strong>${product.name}</strong></p>
       <form id="optionsForm">
-        <label for="cartSize">${sizeLabel} :</label>
+        <label for="cartSize">Taille/Modèle :</label>
         <select id="cartSize" name="size" required>
           <option value="">Sélectionner</option>
           ${sizeOptions.map(s => `<option value="${s}">${s}</option>`).join("")}
@@ -396,28 +435,11 @@ function addProductToCart(product, size, color, quantity) {
       image: product.images[0],
       quantity,
       size,
-      color,
-      category: product.category
+      color
     });
   }
   
   saveCart();
-  
-  // Enregistrer l'action dans Firestore pour l'admin
-  if (currentUser) {
-    addDoc(collection(db, "cartActivities"), {
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userEmail: currentUser.email,
-      action: "add",
-      productId: product.id,
-      productName: product.name,
-      size: size,
-      color: color,
-      quantity: quantity,
-      timestamp: serverTimestamp()
-    });
-  }
   
   // Affiche une confirmation d'ajout
   showCartNotification(`${product.name} ajouté au panier!`);
@@ -463,40 +485,41 @@ function updateCartUI() {
     `;
     const paypalDiv = document.getElementById("paypal-button-container");
     if (paypalDiv) paypalDiv.innerHTML = '';
+    const addressForm = document.getElementById("addressForm");
+    if (addressForm) addressForm.style.display = 'none';
   } else {
-    cartItems.innerHTML = cart.map(item => {
-      // Déterminer le label de taille en fonction de la catégorie
-      let sizeLabel = 'Taille/Modèle';
-      if (item.category === 'hair') {
-        sizeLabel = 'Longueur';
-      } else if (item.category === 'shoes') {
-        sizeLabel = 'Pointure';
-      } else if (item.category === 'beauty') {
-        sizeLabel = 'Volume';
-      }
-      
-      return `
-        <div class="cart-item">
-          <img src="${item.image}" alt="${item.name}">
-          <div class="cart-item-info">
-            <div class="cart-item-name">${item.name}</div>
-            <div style="font-size:0.9em;color:#666;">
-              ${item.size ? `${sizeLabel}: <b>${item.size}</b>, ` : ''}
-              Couleur: <b>${item.color}</b>
-            </div>
-            <div class="cart-item-price">$${item.price.toFixed(2)}</div>
-            <div class="quantity-controls">
-              <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
-              <span>${item.quantity}</span>
-              <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity + 1})">+</button>
-              <button class="quantity-btn" onclick="removeFromCart('${item.key}')" style="margin-left: 1rem; color: #ef4444;">
-                <i class="fas fa-trash"></i>
-              </button>
-            </div>
+    cartItems.innerHTML = cart.map(item => `
+      <div class="cart-item">
+        <img src="${item.image}" alt="${item.name}">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.name}</div>
+          <div style="font-size:0.9em;color:#666;">${item.size ? `Taille/Modèle: <b>${item.size}</b>, ` : ''}Couleur: <b>${item.color}</b></div>
+          <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+          <div class="quantity-controls">
+            <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
+            <span>${item.quantity}</span>
+            <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity + 1})">+</button>
+            <button class="quantity-btn" onclick="removeFromCart('${item.key}')" style="margin-left: 1rem; color: #ef4444;">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+    
+    // Ajouter le formulaire d'adresse si nécessaire
+    if (!document.getElementById("addressForm")) {
+      const addressFormHTML = `
+        <div id="addressForm" style="margin-top: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 0.5rem;">
+          <h4 style="margin-bottom: 1rem;">Adresse de livraison</h4>
+          <div class="form-group">
+            <label for="shippingAddress">Adresse complète</label>
+            <textarea id="shippingAddress" rows="3" placeholder="Entrez votre adresse complète pour la livraison" required></textarea>
           </div>
         </div>
       `;
-    }).join("");
+      cartItems.insertAdjacentHTML('beforeend', addressFormHTML);
+    }
     
     // Gestion PayPal améliorée
     setTimeout(() => {
@@ -519,25 +542,8 @@ window.updateQuantity = function(key, newQuantity) {
 };
 
 window.removeFromCart = function(key) {
-  const item = cart.find((i) => i.key === key);
   cart = cart.filter((i) => i.key !== key);
   saveCart();
-  
-  // Enregistrer l'action dans Firestore pour l'admin
-  if (currentUser && item) {
-    addDoc(collection(db, "cartActivities"), {
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userEmail: currentUser.email,
-      action: "remove",
-      productId: item.id,
-      productName: item.name,
-      size: item.size,
-      color: item.color,
-      quantity: item.quantity,
-      timestamp: serverTimestamp()
-    });
-  }
 };
 
 function renderPaypalButton(totalPrice) {
@@ -578,48 +584,15 @@ function renderPaypalButton(totalPrice) {
       },
       onApprove: function(data, actions) {
         return actions.order.capture().then(async function(details) {
-          // Enregistrer la commande dans Firestore
-          try {
-            const orderData = {
-              customerId: currentUser.id,
-              customerName: currentUser.name,
-              customerEmail: currentUser.email,
-              customerPhone: currentUser.phone,
-              items: cart,
-              total: totalPrice,
-              status: 'pending',
-              paymentId: data.orderID,
-              paymentDetails: details,
-              createdAt: serverTimestamp(),
-              shippingAddress: {
-                street: details.payer.address.address_line_1,
-                city: details.payer.address.admin_area_2,
-                state: details.payer.address.admin_area_1,
-                postalCode: details.payer.address.postal_code,
-                country: details.payer.address.country_code
-              }
-            };
-            
-            await addDoc(collection(db, "orders"), orderData);
-            
-            // Enregistrer l'action de paiement
-            await addDoc(collection(db, "cartActivities"), {
-              userId: currentUser.id,
-              userName: currentUser.name,
-              userEmail: currentUser.email,
-              action: "purchase",
-              items: cart,
-              total: totalPrice,
-              timestamp: serverTimestamp()
-            });
-            
-            alert('Paiement réussi, merci ' + details.payer.name.given_name + ' !');
-            cart = [];
-            saveCart();
-          } catch (error) {
-            console.error("Erreur enregistrement commande:", error);
-            alert("Paiement réussi mais erreur d'enregistrement de la commande");
-          }
+          // Récupérer l'adresse de livraison
+          const shippingAddress = document.getElementById("shippingAddress")?.value || "Non spécifiée";
+          
+          // Créer la commande dans Firestore
+          await createOrder(details, shippingAddress);
+          
+          alert('Paiement réussi, merci ' + details.payer.name.given_name + ' ! Un reçu a été envoyé à votre email.');
+          cart = [];
+          saveCart();
         });
       },
       onError: function(err) {
@@ -636,23 +609,70 @@ function renderPaypalButton(totalPrice) {
   }
 }
 
-function applyFilters() {
-  // Filtrer d'abord par catégorie
-  if (currentCategory === 'all') {
-    filteredProducts = [...products];
-  } else {
-    filteredProducts = products.filter(product => product.category === currentCategory);
-  }
+// Créer une commande dans Firestore
+async function createOrder(paymentDetails, shippingAddress) {
+  if (!currentUser) return;
   
-  // Puis filtrer par terme de recherche
-  if (searchTerm) {
-    filteredProducts = filteredProducts.filter(product => 
-      product.name.toLowerCase().includes(searchTerm) ||
-      (product.description && product.description.toLowerCase().includes(searchTerm))
-    );
+  try {
+    const orderData = {
+      userId: currentUser.id,
+      customerName: currentUser.name,
+      customerEmail: currentUser.email,
+      customerPhone: currentUser.phone,
+      items: cart,
+      totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+      paymentId: paymentDetails.id,
+      paymentStatus: 'completed',
+      shippingAddress: shippingAddress,
+      status: 'processing',
+      createdAt: new Date().toISOString()
+    };
+    
+    // Ajouter la commande à Firestore
+    const orderRef = await addDoc(collection(db, "orders"), orderData);
+    
+    // Envoyer un email de confirmation (simulé)
+    await sendOrderConfirmationEmail(orderData, orderRef.id);
+    
+    // Vider le panier dans Firestore
+    const cartsQuery = query(collection(db, "carts"), where("userId", "==", currentUser.id));
+    const querySnapshot = await getDocs(cartsQuery);
+    
+    if (!querySnapshot.empty) {
+      const cartDoc = querySnapshot.docs[0];
+      await updateDoc(doc(db, "carts", cartDoc.id), {
+        items: [],
+        totalAmount: 0,
+        lastUpdated: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error("Erreur création commande:", error);
   }
+}
+
+// Fonction simulée d'envoi d'email
+async function sendOrderConfirmationEmail(orderData, orderId) {
+  // Dans une application réelle, vous utiliseriez un service d'email comme SendGrid, Mailgun, etc.
+  // ou des Cloud Functions Firebase pour envoyer des emails
   
-  renderProducts();
+  console.log("=== EMAIL DE CONFIRMATION ENVOYÉ ===");
+  console.log("À: ", orderData.customerEmail);
+  console.log("Sujet: Confirmation de votre commande MarcShop");
+  console.log("Contenu:");
+  console.log(`Bonjour ${orderData.customerName},`);
+  console.log("Merci pour votre commande ! Voici le récapitulatif :");
+  console.log("Numéro de commande: ", orderId);
+  console.log("Articles:");
+  orderData.items.forEach(item => {
+    console.log(`- ${item.quantity}x ${item.name} (${item.size}, ${item.color}): $${item.price.toFixed(2)}`);
+  });
+  console.log("Total: $", orderData.totalAmount.toFixed(2));
+  console.log("Adresse de livraison: ", orderData.shippingAddress);
+  console.log("================================");
+  
+  // Simulation d'envoi réussi
+  return true;
 }
 
 function filterByCategory(category) {
@@ -674,6 +694,13 @@ function closeAllPanels() {
   document.getElementById("cartSidebar").classList.remove("active");
   document.getElementById("overlay").classList.remove("active");
   closeLightbox();
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"));
+  document.querySelector(`[data-tab="${tabName}"]`).classList.add("active");
+  document.getElementById(`${tabName}Tab`).classList.add("active");
 }
 
 function shareWebsite() {
