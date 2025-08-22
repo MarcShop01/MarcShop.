@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* ... ton style inline original ... */
         .admin-login {
             display: flex;
             justify-content: center;
@@ -87,6 +86,20 @@
             border-radius: 0.5rem;
             border-left: 4px solid #10b981;
         }
+        .cart-item-admin {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: white;
+        }
+        .order-item {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #10b981;
+        }
     </style>
     <!-- Firebase SDK -->
     <script type="module">
@@ -148,9 +161,8 @@
                 <button class="sidebar-btn" onclick="showSection('orders')">
                     <i class="fas fa-shopping-cart"></i> Commandes
                 </button>
-                <!-- Bouton Activités ajouté ici -->
-                <button class="sidebar-btn" onclick="showSection('activities')">
-                  <i class="fas fa-history"></i> Activités
+                <button class="sidebar-btn" onclick="showSection('carts')">
+                    <i class="fas fa-shopping-basket"></i> Paniers actifs
                 </button>
             </div>
             <div class="admin-main">
@@ -168,6 +180,10 @@
                         <div class="stat-card">
                             <h3>Utilisateurs actifs</h3>
                             <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="activeUsers">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Paniers actifs</h3>
+                            <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="activeCarts">0</p>
                         </div>
                     </div>
                 </div>
@@ -239,12 +255,11 @@
                 </div>
                 <div id="ordersSection" class="admin-section">
                     <h2>Gestion des commandes</h2>
-                    <p>Fonctionnalité en développement...</p>
+                    <div id="ordersList"></div>
                 </div>
-                <!-- Section Activités ajoutée ici -->
-                <div id="activitiesSection" class="admin-section">
-                  <h2>Activités des clients</h2>
-                  <div id="activitiesList"></div>
+                <div id="cartsSection" class="admin-section">
+                    <h2>Paniers actifs</h2>
+                    <div id="cartsList"></div>
                 </div>
             </div>
         </div>
