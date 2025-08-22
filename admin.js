@@ -1,11 +1,12 @@
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, updateDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-const db = window.firebaseDB;
+const db = window.firebaseDB; // défini dans admin.html
+
 const ADMIN_PASSWORD = "marcshop2024";
 let products = [];
 let users = [];
 let orders = [];
-let cartActivities = [];
+let carts = [];
 let isLoggedIn = false;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -14,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
   listenProducts();
   listenUsers();
   listenOrders();
-  listenCartActivities();
+  listenCarts();
 });
 
 function listenProducts() {
@@ -24,7 +25,6 @@ function listenProducts() {
     updateStats();
   });
 }
-
 function listenUsers() {
   onSnapshot(collection(db, "users"), (snapshot) => {
     users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
@@ -32,28 +32,18 @@ function listenUsers() {
     updateStats();
   });
 }
-
 function listenOrders() {
   onSnapshot(collection(db, "orders"), (snapshot) => {
-    orders = snapshot.docs.map(doc => ({ 
-      ...doc.data(), 
-      id: doc.id,
-      createdAt: doc.data().createdAt ? doc.data().createdAt.toDate() : new Date()
-    }));
+    orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     renderOrdersList();
     updateStats();
   });
 }
-
-function listenCartActivities() {
-  const activitiesQuery = query(collection(db, "cartActivities"), orderBy("timestamp", "desc"));
-  onSnapshot(activitiesQuery, (snapshot) => {
-    cartActivities = snapshot.docs.map(doc => ({ 
-      ...doc.data(), 
-      id: doc.id,
-      timestamp: doc.data().timestamp ? doc.data().timestamp.toDate() : new Date()
-    }));
-    renderActivitiesList();
+function listenCarts() {
+  onSnapshot(collection(db, "carts"), (snapshot) => {
+    carts = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    renderCartsList();
+    updateStats();
   });
 }
 
@@ -94,18 +84,15 @@ function login() {
     document.getElementById("adminPassword").value = "";
   }
 }
-
 function logout() {
   localStorage.removeItem("marcshop-admin-session");
   showLogin();
 }
-
 function showLogin() {
   document.getElementById("adminLogin").style.display = "flex";
   document.getElementById("adminDashboard").style.display = "none";
   isLoggedIn = false;
 }
-
 function showDashboard() {
   document.getElementById("adminLogin").style.display = "none";
   document.getElementById("adminDashboard").style.display = "block";
@@ -114,9 +101,8 @@ function showDashboard() {
   renderProductsList();
   renderUsersList();
   renderOrdersList();
-  renderActivitiesList();
+  renderCartsList();
 }
-
 window.showSection = function(sectionName) {
   document.querySelectorAll(".sidebar-btn").forEach((btn) => btn.classList.remove("active"));
   document.querySelectorAll(".admin-section").forEach((section) => section.classList.remove("active"));
@@ -126,7 +112,7 @@ window.showSection = function(sectionName) {
   if (sectionName === "products") renderProductsList();
   if (sectionName === "users") renderUsersList();
   if (sectionName === "orders") renderOrdersList();
-  if (sectionName === "activities") renderActivitiesList();
+  if (sectionName === "carts") renderCartsList();
 }
 
 async function addProduct() {
@@ -237,61 +223,41 @@ function renderUsersList() {
 function renderOrdersList() {
   const ordersList = document.getElementById("ordersList");
   if (!orders || orders.length === 0) {
-    ordersList.innerHTML = "<p>Aucune commande.</p>";
+    ordersList.innerHTML = "<p>Aucune commande passée.</p>";
     return;
   }
   
+  const sortedOrders = [...orders].sort((a, b) => 
+    new Date(b.createdAt || b.orderDate) - new Date(a.createdAt || a.orderDate)
+  );
+  
   ordersList.innerHTML = `
-        <h3>Commandes (${orders.length})</h3>
+        <h3>Commandes (${sortedOrders.length})</h3>
         <div style="display: grid; gap: 1rem;">
-            ${orders
+            ${sortedOrders
               .map((order) => {
-                const orderDate = order.createdAt ? order.createdAt.toLocaleDateString() : 'Date inconnue';
+                const orderDate = order.createdAt || order.orderDate;
                 return `
-                    <div style="border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; overflow: hidden;">
-                        <div style="background: #f9fafb; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>Commande #${order.id.slice(-6)}</strong><br>
-                                <span>${order.customerName} - ${order.customerEmail}</span>
-                            </div>
-                            <div style="text-align: right;">
-                                <span style="background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
-                                    ${order.status || 'En attente'}
-                                </span>
-                                <div>${orderDate}</div>
-                            </div>
+                    <div class="order-item">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <strong>Commande #${order.id.substring(0, 8)}</strong>
+                            <span style="color: #10b981; font-weight: bold;">$${order.totalAmount?.toFixed(2) || '0.00'}</span>
                         </div>
-                        <div style="padding: 1rem;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                <div>
-                                    <strong>Adresse de livraison:</strong><br>
-                                    ${order.shippingAddress ? `
-                                        ${order.shippingAddress.street || 'Non spécifié'}<br>
-                                        ${order.shippingAddress.postalCode || ''} ${order.shippingAddress.city || ''}<br>
-                                        ${order.shippingAddress.country || ''}
-                                    ` : 'Non spécifiée'}
-                                </div>
-                                <div>
-                                    <strong>Total: $${order.total.toFixed(2)}</strong><br>
-                                    <span>${order.items.length} article(s)</span>
-                                </div>
-                            </div>
-                            <div>
-                                <strong>Articles:</strong>
-                                <div style="margin-top: 0.5rem;">
-                                    ${order.items.map(item => `
-                                        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #f9fafb; border-radius: 0.25rem; margin-bottom: 0.25rem;">
-                                            <img src="${item.image}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 0.25rem;">
-                                            <div>
-                                                <div>${item.name}</div>
-                                                <div style="font-size: 0.875rem; color: #6b7280;">
-                                                    ${item.size ? `Taille: ${item.size}, ` : ''}Couleur: ${item.color}, Quantité: ${item.quantity}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>Client:</strong> ${order.customerName} (${order.customerEmail})<br>
+                            <strong>Téléphone:</strong> ${order.customerPhone}<br>
+                            <strong>Adresse:</strong> ${order.shippingAddress || 'Non spécifiée'}
+                        </div>
+                        <div>
+                            <strong>Produits:</strong>
+                            <ul style="margin-top: 0.5rem;">
+                                ${order.items?.map(item => `
+                                    <li>${item.quantity}x ${item.name} (${item.size}, ${item.color}) - $${item.price.toFixed(2)}</li>
+                                `).join('') || 'Aucun détail produit'}
+                            </ul>
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                            Passée le: ${new Date(orderDate).toLocaleDateString()} à ${new Date(orderDate).toLocaleTimeString()}
                         </div>
                     </div>
                 `;
@@ -301,55 +267,46 @@ function renderOrdersList() {
     `;
 }
 
-function renderActivitiesList() {
-  const activitiesList = document.getElementById("activitiesList");
-  if (!cartActivities || cartActivities.length === 0) {
-    activitiesList.innerHTML = "<p>Aucune activité récente.</p>";
+function renderCartsList() {
+  const cartsList = document.getElementById("cartsList");
+  if (!carts || carts.length === 0) {
+    cartsList.innerHTML = "<p>Aucun panier actif.</p>";
     return;
   }
   
-  activitiesList.innerHTML = `
-        <h3>Activités récentes (${cartActivities.length})</h3>
+  // Filtrer les paniers qui ne sont pas vides
+  const activeCarts = carts.filter(cart => cart.items && cart.items.length > 0);
+  
+  cartsList.innerHTML = `
+        <h3>Paniers actifs (${activeCarts.length})</h3>
         <div style="display: grid; gap: 1rem;">
-            ${cartActivities
-              .map((activity) => {
-                const activityDate = activity.timestamp ? activity.timestamp.toLocaleString() : 'Date inconnue';
-                let actionText = '';
-                let actionColor = '';
-                
-                switch(activity.action) {
-                  case 'add':
-                    actionText = `a ajouté "${activity.productName}" au panier`;
-                    actionColor = '#10b981';
-                    break;
-                  case 'remove':
-                    actionText = `a retiré "${activity.productName}" du panier`;
-                    actionColor = '#ef4444';
-                    break;
-                  case 'purchase':
-                    actionText = `a effectué un achat de $${activity.total.toFixed(2)}`;
-                    actionColor = '#3b82f6';
-                    break;
-                  default:
-                    actionText = `a effectué une action`;
-                    actionColor = '#6b7280';
-                }
+            ${activeCarts
+              .map((cart) => {
+                const user = users.find(u => u.id === cart.userId);
+                const userName = user ? user.name : 'Utilisateur inconnu';
+                const userEmail = user ? user.email : 'Email inconnu';
+                const lastUpdated = cart.lastUpdated ? new Date(cart.lastUpdated) : new Date();
                 
                 return `
-                    <div style="border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white; padding: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <div>
-                                <strong>${activity.userName}</strong> ${actionText}
-                            </div>
-                            <span style="background: ${actionColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
-                                ${activity.action}
-                            </span>
+                    <div class="cart-item-admin">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <strong>${userName}</strong>
+                            <span style="color: #10b981; font-weight: bold;">$${cart.totalAmount?.toFixed(2) || '0.00'}</span>
                         </div>
-                        <div style="font-size: 0.875rem; color: #6b7280;">
-                            ${activityDate}
-                            ${activity.size ? ` • Taille: ${activity.size}` : ''}
-                            ${activity.color ? ` • Couleur: ${activity.color}` : ''}
-                            ${activity.quantity ? ` • Quantité: ${activity.quantity}` : ''}
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>Email:</strong> ${userEmail}<br>
+                            <strong>Articles:</strong> ${cart.items.length}
+                        </div>
+                        <div>
+                            <strong>Produits:</strong>
+                            <ul style="margin-top: 0.5rem;">
+                                ${cart.items.map(item => `
+                                    <li>${item.quantity}x ${item.name} (${item.size}, ${item.color}) - $${item.price.toFixed(2)}</li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                            Dernière mise à jour: ${lastUpdated.toLocaleDateString()} à ${lastUpdated.toLocaleTimeString()}
                         </div>
                     </div>
                 `;
@@ -371,4 +328,8 @@ function updateStats() {
   document.getElementById("totalProducts").textContent = products.length;
   document.getElementById("totalUsers").textContent = users.length;
   document.getElementById("activeUsers").textContent = users.filter(isUserActive).length;
+  
+  // Compter les paniers actifs (non vides)
+  const activeCartsCount = carts.filter(cart => cart.items && cart.items.length > 0).length;
+  document.getElementById("activeCarts").textContent = activeCartsCount;
 }
